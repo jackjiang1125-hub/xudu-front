@@ -56,6 +56,7 @@
   import { cloneDeep, merge } from 'lodash-es';
   import type { TimePeriodRecord, TimePeriodDetail, TimeInterval } from './timeperiod.data';
   import { createBlankPlan } from './timeperiod.data';
+  import { addTimePeriod, editTimePeriod, getTimePeriodDetail } from './timeperiod.api';
 
   interface ModalEmit {
     (e: 'register', ...args: any[]): void;
@@ -157,7 +158,18 @@
     copyMonday.value = false;
     modalState.isUpdate = !!props?.isUpdate;
     modalState.id = props?.record?.id || '';
-    const targetDetail = props?.record?.detail ? cloneDeep(props.record.detail) : createBlankPlan();
+    let targetDetail = props?.record?.detail ? cloneDeep(props.record.detail) : createBlankPlan();
+    // 若仅传入id或缺少detail，则调用后端加载完整详情
+    if (modalState.isUpdate && modalState.id && (!props?.record?.detail || props?.record?.detail.length === 0)) {
+      try {
+        const full = await getTimePeriodDetail(modalState.id);
+        targetDetail = full?.detail ? cloneDeep(full.detail) : createBlankPlan();
+        await setFieldsValue({ name: full?.name ?? '', remark: full?.remark ?? '' });
+      } catch (e) {
+        // 如果加载失败，仍然允许编辑基本信息
+        await setFieldsValue({ name: props?.record?.name ?? '', remark: props?.record?.remark ?? '' });
+      }
+    }
     replaceTimeTable(targetDetail);
     await setFieldsValue({
       name: props?.record?.name ?? '',
@@ -186,20 +198,26 @@
   async function handleOk() {
     const values = await validate();
     const detail = cloneDeep(timeTable);
-    const record: TimePeriodRecord = {
-      id: modalState.isUpdate && modalState.id ? modalState.id : `tp-${Date.now()}`,
+    const payload = {
+      id: modalState.isUpdate ? modalState.id : undefined,
       name: values.name,
       remark: values.remark,
-      updatedAt: new Date().toISOString().slice(0, 16).replace('T', ' '),
-      creator: modalState.isUpdate ? '系统管理员' : '当前用户',
       detail,
-    };
-    emit('submit', record);
-    setModalProps({ confirmLoading: true });
-    setTimeout(() => {
+    } as TimePeriodRecord;
+    try {
+      setModalProps({ confirmLoading: true });
+      if (modalState.isUpdate) {
+        await editTimePeriod(payload);
+      } else {
+        await addTimePeriod(payload);
+      }
+      emit('submit');
+    } catch (e) {
+      // 错误消息由 http 拦截器统一处理，这里只重置loading
+    } finally {
       setModalProps({ confirmLoading: false });
       closeModal();
-    }, 220);
+    }
   }
 
   function handleCopyMonday(checked: boolean) {
