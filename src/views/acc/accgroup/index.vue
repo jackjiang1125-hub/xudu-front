@@ -1,5 +1,5 @@
 <template>
-  <PageWrapper title="门禁权限组管理">
+  <PageWrapper title="门禁权限组管理" :contentStyle="{ marginLeft: '0' }">
     <a-row :gutter="16" class="group-layout">
       <a-col :span="8" class="group-left">
         <BasicTable @register="handleRegisterGroupTable">
@@ -27,7 +27,7 @@
           <a-card title="权限组概览" class="group-card" :bodyStyle="{ padding: '16px 20px' }">
             <a-descriptions :column="2" size="small" bordered layout="horizontal">
               <a-descriptions-item label="权限组名称">{{ currentGroup.groupName }}</a-descriptions-item>
-              <a-descriptions-item label="启用时段">{{ currentGroup.timeRange }}</a-descriptions-item>
+              <a-descriptions-item label="启用时段">{{ currentGroup.periodName }}</a-descriptions-item>
               <a-descriptions-item label="人员数量">{{ currentGroup.memberCount }}</a-descriptions-item>
               <a-descriptions-item label="设备数量">{{ currentGroup.deviceCount }}</a-descriptions-item>
               <a-descriptions-item label="创建时间">{{ currentGroup.createTime }}</a-descriptions-item>
@@ -64,11 +64,11 @@
   import { BasicTable, useTable } from '/@/components/Table';
   import { useModal } from '/@/components/Modal';
   import { useMessage } from '/@/hooks/web/useMessage';
+  import { listAccGroups, getAccGroupDetail, deleteAccGroup, addAccGroup, editAccGroup } from './accgroup.api';
   import GroupForm from './groupForm.vue';
   import {
     groupColumns,
     groupSearchFormSchema,
-    mockGroupList,
     memberColumns,
     deviceColumns,
     mockMemberList,
@@ -77,8 +77,7 @@
   } from './accgroup.data';
 
   const { createMessage, createConfirm } = useMessage();
-  const dataSource = ref<AccGroupItem[]>([...mockGroupList]);
-  const selectedGroupId = ref<string | null>(dataSource.value[0]?.id ?? null);
+  const selectedGroupId = ref<string | null>(null);
 
   const groupTableReady = ref(false);
   const memberTableReady = ref(false);
@@ -88,10 +87,7 @@
     padding: '12px 16px',
   };
 
-  const currentGroup = computed(() => {
-    if (!selectedGroupId.value) return null;
-    return dataSource.value.find((item) => item.id === selectedGroupId.value) ?? null;
-  });
+  const currentGroup = ref<AccGroupItem | null>(null);
 
   const currentMembers = computed(() => {
     if (!currentGroup.value?.members?.length) return [];
@@ -103,14 +99,19 @@
     return mockDeviceList.filter((device) => currentGroup.value!.devices!.includes(device.id));
   });
 
-  const [internalRegisterGroupTable, { setTableData: setGroupTableData, setSelectedRowKeys }] = useTable({
+  const [internalRegisterGroupTable, { setSelectedRowKeys, reload: reloadGroupTable }] = useTable({
     title: '权限组列表',
+    api: listAccGroups,
     columns: groupColumns,
-    dataSource: dataSource.value,
     bordered: true,
     rowKey: 'id',
+    useSearchForm: true,
     formConfig: {
       labelWidth: 100,
+      labelAlign: 'right',
+      compact: true,
+      rowProps: { gutter: 16, align: 'middle' },
+      baseColProps: { span: 24 },
       schemas: groupSearchFormSchema,
       autoSubmitOnEnter: true,
       showAdvancedButton: false,
@@ -126,6 +127,8 @@
         const record = rows[0];
         if (record) {
           selectedGroupId.value = record.id;
+          currentGroup.value = record;
+          loadGroupDetail(record.id);
         }
       },
     },
@@ -133,6 +136,8 @@
       return {
         onClick: () => {
           selectedGroupId.value = record.id;
+          currentGroup.value = record;
+          loadGroupDetail(record.id);
         },
       };
     },
@@ -172,7 +177,7 @@
     internalRegisterGroupTable(...args);
     groupTableReady.value = true;
     nextTick(() => {
-      refreshGroupTable();
+      reloadGroupTable({ page: 1 });
       syncSelection();
     });
   }
@@ -189,10 +194,22 @@
     nextTick(refreshDeviceTable);
   }
 
-  function refreshGroupTable() {
-    if (groupTableReady.value) {
-      setGroupTableData([...dataSource.value]);
-    }
+  async function loadGroupDetail(id: string) {
+    try {
+      const vo = await getAccGroupDetail(id);
+      currentGroup.value = {
+        id: vo.id!,
+        groupName: vo.groupName,
+        periodId: vo.periodId,
+        periodName: vo.periodName,
+        memberCount: vo.memberCount ?? 0,
+        deviceCount: vo.deviceCount ?? 0,
+        createTime: vo.createTime ?? '',
+        remark: vo.remark,
+        members: vo.members ?? [],
+        devices: vo.devices ?? [],
+      };
+    } catch (e) {}
   }
 
   function refreshMemberTable() {
@@ -208,7 +225,6 @@
   }
 
   function refreshAllTables() {
-    refreshGroupTable();
     refreshMemberTable();
     refreshDeviceTable();
   }
@@ -228,44 +244,52 @@
 
   function confirmDelete() {
     if (!selectedGroupId.value) return;
-    const record = dataSource.value.find((item) => item.id === selectedGroupId.value);
-    if (!record) return;
     createConfirm({
       title: '删除权限组',
-      content: `确认删除权限组“${record.groupName}”吗？`,
+      content: `确认删除当前选中的权限组吗？`,
       iconType: 'warning',
-      onOk: () => handleDelete(record),
+      onOk: () => handleDelete(selectedGroupId.value!),
     });
   }
 
-  function handleDelete(record: AccGroupItem) {
-    dataSource.value = dataSource.value.filter((item) => item.id !== record.id);
-    if (selectedGroupId.value === record.id) {
-      selectedGroupId.value = dataSource.value[0]?.id ?? null;
-    }
-    nextTick(() => {
-      refreshAllTables();
+  async function handleDelete(id: string) {
+    try {
+      await deleteAccGroup(id);
+      createMessage.success('删除成功');
+      selectedGroupId.value = null;
+      currentGroup.value = null;
+      await reloadGroupTable();
       syncSelection();
-    });
-    createMessage.success('已删除该权限组（示例数据）');
+    } catch (e: any) {
+      createMessage.error(e?.message || '删除失败');
+    }
   }
 
   function handleFormSuccess(payload: { record: AccGroupItem; isUpdate: boolean; detail?: Record<string, any> }) {
-    const { record, isUpdate } = payload;
-    if (isUpdate) {
-      const index = dataSource.value.findIndex((item) => item.id === record.id);
-      if (index > -1) {
-        dataSource.value.splice(index, 1, record);
+    const { record, isUpdate, detail } = payload;
+    const vo = {
+      id: isUpdate ? record.id : undefined,
+      groupName: record.groupName,
+      periodId: record.periodId,
+      remark: record.remark,
+      members: detail?.members?.map((m: any) => m.id) ?? record.members ?? [],
+      devices: detail?.devices?.map((d: any) => d.id) ?? record.devices ?? [],
+    };
+    (async () => {
+      try {
+        const resp = isUpdate ? await editAccGroup(vo) : await addAccGroup(vo);
+        createMessage.success(isUpdate ? '权限组信息已更新' : '已创建新的权限组');
+        await reloadGroupTable();
+        selectedGroupId.value = resp.id!;
+        await loadGroupDetail(resp.id!);
+        nextTick(() => {
+          refreshAllTables();
+          syncSelection();
+        });
+      } catch (e: any) {
+        createMessage.error(e?.message || '提交失败');
       }
-    } else {
-      dataSource.value = [{ ...record }, ...dataSource.value];
-    }
-    selectedGroupId.value = record.id;
-    nextTick(() => {
-      refreshAllTables();
-      syncSelection();
-    });
-    createMessage.success(isUpdate ? '权限组信息已更新' : '已创建新的权限组');
+    })();
   }
 
   function syncSelection() {
@@ -303,6 +327,11 @@
     height: 100%;
   }
 
+  /* 去除左侧列因 gutter 带来的左内边距，贴齐窗口左缘 */
+  .group-left {
+    padding-left: 0 !important;
+  }
+
   .group-right {
     gap: 16px;
   }
@@ -318,5 +347,22 @@
   .table-header {
     display: flex;
     justify-content: flex-start;
+    /* 与上方搜索表单保持一定间距 */
+    margin-top: 10px;
+  }
+
+  /* 搜索表单左对齐与项间距优化 */
+  .group-left :deep(.ant-form-inline) {
+    justify-content: flex-start;
+  }
+
+  .group-left :deep(.ant-form-inline .ant-form-item) {
+    margin-right: 12px;
+    margin-bottom: 8px;
+  }
+
+  /* 去除卡片内容区左内边距，确保表单标签贴边 */
+  .group-left :deep(.ant-card-body) {
+    padding-left: 0 !important;
   }
 </style>

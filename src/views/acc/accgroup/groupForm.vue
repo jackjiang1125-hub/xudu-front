@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <BasicModal
     @register="registerModal"
     :title="modalTitle"
@@ -91,19 +91,22 @@
   import { BasicModal, useModalInner } from '/@/components/Modal';
   import { BasicForm, useForm } from '/@/components/Form';
   import { BasicTable, useTable } from '/@/components/Table';
+  import { listTimePeriods } from '../timeperiod/timeperiod.api';
   import {
     memberColumns,
     deviceColumns,
     memberSearchFormSchema,
     deviceSearchFormSchema,
-    mockMemberList,
-    mockDeviceList,
+    fetchAccMemberList,
+    fetchAccDeviceList,
+    type AccMemberItem,
+    type AccDeviceItem,
     type AccGroupItem,
   } from './accgroup.data';
   import { dateUtil } from '/@/utils/dateUtil';
 
-  type MemberItem = (typeof mockMemberList)[number];
-  type DeviceItem = (typeof mockDeviceList)[number];
+  type MemberItem = AccMemberItem;
+  type DeviceItem = AccDeviceItem;
 
   interface GroupDetailPayload {
     members: MemberItem[];
@@ -135,14 +138,16 @@
   const memberMoreCount = computed(() => Math.max(0, selectedMemberRows.value.length - memberPreview.value.length));
   const deviceMoreCount = computed(() => Math.max(0, selectedDeviceRows.value.length - devicePreview.value.length));
 
-  const defaultTimeRange: string[] = ['08:00', '19:00'];
-  const defaultApplyDays: string[] = ['daily'];
+  const periodName = ref<string>('');
 
   const modalTitle = computed(() => (isUpdate.value ? '编辑权限组' : '新增权限组'));
 
   const [registerForm, { resetFields, setFieldsValue, validate }] = useForm({
     labelWidth: 100,
-    baseColProps: { span: 24 },
+    labelAlign: 'right',
+    compact: true,
+    rowProps: { gutter: 16 },
+    baseColProps: { span: 12 },
     showActionButtonGroup: false,
     schemas: [
       {
@@ -152,41 +157,30 @@
         required: true,
         componentProps: {
           placeholder: '请输入权限组名称',
+          allowClear: true,
           maxlength: 32,
           showCount: true,
+          size: 'middle',
         },
       },
       {
-        field: 'applyDays',
-        label: '适用日期',
-        component: 'Select',
+        field: 'periodId',
+        label: '授权时间段',
+        component: 'ApiSelect',
         required: true,
-        defaultValue: defaultApplyDays,
         componentProps: {
-          mode: 'multiple',
+          api: (p:any) => listTimePeriods(p),
+          labelField: 'name',
+          valueField: 'id',
+          // 接口返回为分页结构 { records, total }，下拉需读取 records
+          resultField: 'records',
+          showSearch: true,
           allowClear: true,
-          maxTagCount: 3,
-          placeholder: '请选择适用日期',
-          options: [
-            { label: '全部日期', value: 'daily' },
-            { label: '工作日', value: 'workday' },
-            { label: '周末', value: 'weekend' },
-            { label: '自定义日期', value: 'custom' },
-          ],
-        },
-      },
-      {
-        field: 'timeRange',
-        label: '启用时间段',
-        component: 'RangePicker',
-        required: true,
-        defaultValue: defaultTimeRange,
-        componentProps: {
-          picker: 'time',
-          format: 'HH:mm',
-          valueFormat: 'HH:mm',
-          minuteStep: 5,
-          placeholder: ['开始时间', '结束时间'],
+          placeholder: '请选择时间段',
+          size: 'middle',
+          onChange: (_: any, option: any) => {
+            periodName.value = option?.label ?? '';
+          },
         },
       },
       {
@@ -199,6 +193,8 @@
           rows: 3,
           maxlength: 200,
           showCount: true,
+          allowClear: true,
+          size: 'middle',
         },
       },
     ],
@@ -211,7 +207,10 @@
     bordered: true,
     useSearchForm: true,
     formConfig: {
-      labelWidth: 80,
+      labelWidth: 100,
+      labelAlign: 'right',
+      compact: true,
+      rowProps: { gutter: 16 },
       schemas: memberSearchFormSchema,
       autoSubmitOnEnter: true,
       showAdvancedButton: true,
@@ -227,8 +226,8 @@
     rowSelection: {
       type: 'checkbox',
       preserveSelectedRowKeys: true,
-      onChange: (keys: (string | number)[]) => {
-        handleMemberSelect(keys.map(String));
+      onChange: (keys: (string | number)[], rows: MemberItem[]) => {
+        handleMemberSelect(keys.map(String), rows);
       },
     },
   });
@@ -240,7 +239,10 @@
     bordered: true,
     useSearchForm: true,
     formConfig: {
-      labelWidth: 90,
+      labelWidth: 100,
+      labelAlign: 'right',
+      compact: true,
+      rowProps: { gutter: 16 },
       schemas: deviceSearchFormSchema,
       autoSubmitOnEnter: true,
       showAdvancedButton: true,
@@ -256,8 +258,8 @@
     rowSelection: {
       type: 'checkbox',
       preserveSelectedRowKeys: true,
-      onChange: (keys: (string | number)[]) => {
-        handleDeviceSelect(keys.map(String));
+      onChange: (keys: (string | number)[], rows: DeviceItem[]) => {
+        handleDeviceSelect(keys.map(String), rows);
       },
     },
   });
@@ -269,18 +271,17 @@
     currentRecord.value = payload?.record ?? null;
 
     const record = currentRecord.value;
-    const applyDays = record?.applyDays?.length ? record.applyDays : defaultApplyDays;
-    const timeSlots = record?.timeSlots?.length === 2 ? record.timeSlots : defaultTimeRange;
+    periodName.value = record?.periodName ?? '';
 
     selectedMemberKeys.value = record?.members ? [...record.members] : [];
     selectedDeviceKeys.value = record?.devices ? [...record.devices] : [];
-    selectedMemberRows.value = mapMemberRows(selectedMemberKeys.value);
-    selectedDeviceRows.value = mapDeviceRows(selectedDeviceKeys.value);
+    // 预加载编辑态已选项详情，用于右侧预览
+    await preloadSelectedMembers();
+    await preloadSelectedDevices();
 
     await setFieldsValue({
       groupName: record?.groupName ?? '',
-      applyDays,
-      timeRange: timeSlots,
+      periodId: record?.periodId ?? undefined,
       remark: record?.remark ?? '',
     });
 
@@ -292,63 +293,57 @@
   });
 
   async function fetchMemberList(params: Record<string, any>) {
-    const pageNo = Number(params.pageNo) || 1;
-    const pageSize = Number(params.pageSize) || 10;
-    const { name, dept, phone } = params;
-    let list = [...mockMemberList];
-    if (name) {
-      list = list.filter((item) => item.name.includes(name));
-    }
-    if (dept) {
-      list = list.filter((item) => item.dept.includes(dept));
-    }
-    if (phone) {
-      list = list.filter((item) => item.phone.includes(phone));
-    }
-    const total = list.length;
-    const start = (pageNo - 1) * pageSize;
-    const records = list.slice(start, start + pageSize);
-    return { records, total };
+    return await fetchAccMemberList(params);
   }
 
   async function fetchDeviceList(params: Record<string, any>) {
-    const pageNo = Number(params.pageNo) || 1;
-    const pageSize = Number(params.pageSize) || 10;
-    const { deviceName, sn, location } = params;
-    let list = [...mockDeviceList];
-    if (deviceName) {
-      list = list.filter((item) => item.deviceName.includes(deviceName));
-    }
-    if (sn) {
-      list = list.filter((item) => item.sn.includes(sn));
-    }
-    if (location) {
-      list = list.filter((item) => item.location.includes(location));
-    }
-    const total = list.length;
-    const start = (pageNo - 1) * pageSize;
-    const records = list.slice(start, start + pageSize);
-    return { records, total };
+    return await fetchAccDeviceList(params);
   }
 
-  function mapMemberRows(keys: string[]) {
-    if (!keys?.length) return [];
-    return mockMemberList.filter((item) => keys.includes(item.id));
+  async function preloadSelectedMembers() {
+    const ids = selectedMemberKeys.value;
+    if (!ids?.length) {
+      selectedMemberRows.value = [];
+      return;
+    }
+    // 尝试通过列表接口按 ids 预加载（后端如不支持 ids，使用前端过滤）
+    const res = await fetchAccMemberList({ pageNo: 1, pageSize: Math.max(ids.length, 10), ids: ids.join(',') });
+    const rows = (res.records || []).filter((r) => ids.includes(r.id));
+    selectedMemberRows.value = rows;
   }
 
-  function mapDeviceRows(keys: string[]) {
-    if (!keys?.length) return [];
-    return mockDeviceList.filter((item) => keys.includes(item.id));
+  async function preloadSelectedDevices() {
+    const ids = selectedDeviceKeys.value;
+    if (!ids?.length) {
+      selectedDeviceRows.value = [];
+      return;
+    }
+    const res = await fetchAccDeviceList({ pageNo: 1, pageSize: Math.max(ids.length, 10), ids: ids.join(',') });
+    const rows = (res.records || []).filter((r) => ids.includes(r.id));
+    selectedDeviceRows.value = rows;
   }
 
-  function handleMemberSelect(keys: string[]) {
+  function handleMemberSelect(keys: string[], rows?: MemberItem[]) {
     selectedMemberKeys.value = keys;
-    selectedMemberRows.value = mapMemberRows(keys);
+    if (rows && rows.length) {
+      selectedMemberRows.value = rows;
+    } else {
+      // 无 rows 时（跨页勾选或初始化），保持已有行并去重
+      const map = new Map<string, MemberItem>();
+      selectedMemberRows.value.forEach((r) => map.set(r.id, r));
+      selectedMemberRows.value = keys.map((id) => map.get(id)).filter(Boolean) as MemberItem[];
+    }
   }
 
-  function handleDeviceSelect(keys: string[]) {
+  function handleDeviceSelect(keys: string[], rows?: DeviceItem[]) {
     selectedDeviceKeys.value = keys;
-    selectedDeviceRows.value = mapDeviceRows(keys);
+    if (rows && rows.length) {
+      selectedDeviceRows.value = rows;
+    } else {
+      const map = new Map<string, DeviceItem>();
+      selectedDeviceRows.value.forEach((r) => map.set(r.id, r));
+      selectedDeviceRows.value = keys.map((id) => map.get(id)).filter(Boolean) as DeviceItem[];
+    }
   }
 
   function clearMembers() {
@@ -375,20 +370,7 @@
     setDeviceRowKeys?.(selectedDeviceKeys.value);
   }
 
-  function formatTimeRange(applyDays: string[], timeRange: string[]) {
-    const dayTextMap: Record<string, string> = {
-      daily: '每天',
-      workday: '周一至周五',
-      weekend: '周末',
-      custom: '自定义',
-    };
-    const rangeText = `${timeRange[0]} - ${timeRange[1]}`;
-    if (!applyDays?.length) {
-      return rangeText;
-    }
-    const labels = applyDays.map((item) => dayTextMap[item] ?? item).join('、');
-    return `${labels} ${rangeText}`;
-  }
+  // periodId 对应的展示名称 periodName 已在下拉选择时记录
 
   async function handleSubmit() {
     const values = await validate();
@@ -401,15 +383,14 @@
     const record: AccGroupItem = {
       id: recordId,
       groupName: values.groupName,
-      timeRange: formatTimeRange(values.applyDays, values.timeRange),
+      periodId: values.periodId,
+      periodName: periodName.value,
       memberCount: members.length,
       deviceCount: devices.length,
       createTime,
       remark: values.remark,
       members: members.map((item) => item.id),
       devices: devices.map((item) => item.id),
-      applyDays: values.applyDays,
-      timeSlots: values.timeRange,
     };
 
     emit('success', {

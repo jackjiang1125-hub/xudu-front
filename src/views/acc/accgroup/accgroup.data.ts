@@ -1,18 +1,37 @@
-﻿import type { BasicColumn } from '/@/components/Table';
+import type { BasicColumn } from '/@/components/Table';
 import type { FormSchema } from '/@/components/Form';
+import { getUserList } from '/@/api/common/api';
+import { listDevices } from '../devce.api';
 
 export interface AccGroupItem {
   id: string;
   groupName: string;
-  timeRange: string;
+  periodId?: string;
+  periodName?: string;
   memberCount: number;
   deviceCount: number;
   createTime: string;
   remark?: string;
   members?: string[];
   devices?: string[];
-  applyDays?: string[];
-  timeSlots?: string[];
+}
+
+// 选择成员表格的数据结构
+export interface AccMemberItem {
+  id: string;
+  name: string;
+  dept: string;
+  phone?: string;
+  position?: string;
+}
+
+// 选择设备表格的数据结构
+export interface AccDeviceItem {
+  id: string;
+  sn: string;
+  deviceName: string;
+  location?: string;
+  authorized?: '已授权' | '未授权';
 }
 
 export const groupColumns: BasicColumn[] = [
@@ -22,8 +41,8 @@ export const groupColumns: BasicColumn[] = [
     width: 180,
   },
   {
-    title: '启用时段',
-    dataIndex: 'timeRange',
+    title: '授权时间段',
+    dataIndex: 'periodName',
     width: 200,
   },
   {
@@ -50,24 +69,15 @@ export const groupColumns: BasicColumn[] = [
 
 export const groupSearchFormSchema: FormSchema[] = [
   {
-    label: '权限组名称',
+    label: '权限组',
     field: 'groupName',
     component: 'Input',
-    colProps: { span: 8 },
-  },
-  {
-    label: '人员数量',
-    field: 'memberCount',
-    component: 'InputNumber',
-    componentProps: { min: 0 },
-    colProps: { span: 8 },
-  },
-  {
-    label: '设备数量',
-    field: 'deviceCount',
-    component: 'InputNumber',
-    componentProps: { min: 0 },
-    colProps: { span: 8 },
+    colProps: { span: 12 },
+    componentProps: {
+      placeholder: '请输入权限组名称',
+      allowClear: true,
+      size: 'middle',
+    },
   },
 ];
 
@@ -100,18 +110,33 @@ export const memberSearchFormSchema: FormSchema[] = [
     field: 'name',
     component: 'Input',
     colProps: { span: 8 },
+    componentProps: {
+      placeholder: '输入姓名',
+      allowClear: true,
+      size: 'middle',
+    },
   },
   {
     label: '部门',
     field: 'dept',
     component: 'Input',
     colProps: { span: 8 },
+    componentProps: {
+      placeholder: '输入部门',
+      allowClear: true,
+      size: 'middle',
+    },
   },
   {
     label: '联系方式',
     field: 'phone',
     component: 'Input',
     colProps: { span: 8 },
+    componentProps: {
+      placeholder: '输入联系方式',
+      allowClear: true,
+      size: 'middle',
+    },
   },
 ];
 
@@ -145,18 +170,33 @@ export const deviceSearchFormSchema: FormSchema[] = [
     field: 'deviceName',
     component: 'Input',
     colProps: { span: 8 },
+    componentProps: {
+      placeholder: '输入设备名称',
+      allowClear: true,
+      size: 'middle',
+    },
   },
   {
     label: '序列号',
     field: 'sn',
     component: 'Input',
     colProps: { span: 8 },
+    componentProps: {
+      placeholder: '输入序列号',
+      allowClear: true,
+      size: 'middle',
+    },
   },
   {
     label: '安装位置',
     field: 'location',
     component: 'Input',
     colProps: { span: 8 },
+    componentProps: {
+      placeholder: '输入安装位置',
+      allowClear: true,
+      size: 'middle',
+    },
   },
 ];
 
@@ -164,41 +204,38 @@ export const mockGroupList: AccGroupItem[] = [
   {
     id: 'g-001',
     groupName: '行政办公区',
-    timeRange: '周一至周五 08:30 - 19:00',
+    periodId: 'tp-001',
+    periodName: '工作日白班',
     memberCount: 28,
     deviceCount: 6,
     createTime: '2025-09-28 10:32:18',
     remark: '行政楼层员工适用',
     members: ['u-1002', 'u-1005'],
     devices: ['d-001', 'd-003'],
-    applyDays: ['workday'],
-    timeSlots: ['08:30', '19:00'],
   },
   {
     id: 'g-002',
     groupName: '夜班值守',
-    timeRange: '每天 19:00 - 次日 08:00',
+    periodId: 'tp-002',
+    periodName: '夜班时段',
     memberCount: 12,
     deviceCount: 4,
     createTime: '2025-09-12 21:15:40',
     remark: '夜班安保与运维人员',
     members: ['u-1003', 'u-1004'],
     devices: ['d-002', 'd-004'],
-    applyDays: ['daily'],
-    timeSlots: ['19:00', '08:00'],
   },
   {
     id: 'g-003',
     groupName: '访客临时',
-    timeRange: '临时审批时段',
+    periodId: 'tp-003',
+    periodName: '访客临时',
     memberCount: 6,
     deviceCount: 2,
     createTime: '2025-10-01 09:08:05',
     remark: '配合访客系统动态授权',
     members: ['u-1001'],
     devices: ['d-005'],
-    applyDays: ['custom'],
-    timeSlots: ['09:00', '21:00'],
   },
 ];
 
@@ -319,3 +356,65 @@ export const mockDeviceList = [
     authorized: '未授权',
   },
 ];
+
+// ===== 真实接口封装：选择人员/设备 =====
+// 返回结构需符合 BasicTable 默认 fetchSetting：{ listField: 'records', totalField: 'total' }
+
+/**
+ * 获取成员列表（分页）并转换为模块内字段
+ * 支持参数：pageNo, pageSize, name(映射 realname), dept(映射 orgCodeTxt), phone
+ */
+export async function fetchAccMemberList(params: Record<string, any>): Promise<{ records: AccMemberItem[]; total: number }>{
+  const { pageNo, pageSize, name, dept, phone, ids } = params ?? {};
+  const query: Record<string, any> = {
+    pageNo: pageNo ?? 1,
+    pageSize: pageSize ?? 10,
+  };
+  if (name) query.realname = name;
+  if (dept) query.orgCodeTxt = dept;
+  if (phone) query.phone = phone;
+  if (ids) query.ids = ids;
+
+  const res: any = await getUserList(query);
+  const list = (res?.records ?? []).map((u: any) => ({
+    id: String(u.id ?? u.userId ?? u.username ?? ''),
+    name: String(u.realname ?? u.username ?? ''),
+    dept: String(u.orgCodeTxt ?? u.departName ?? ''),
+    phone: u.phone ? String(u.phone) : '',
+    position: u.post ?? u.position ?? '',
+  })) as AccMemberItem[];
+
+  return {
+    records: list,
+    total: Number(res?.total ?? list.length ?? 0),
+  };
+}
+
+/**
+ * 获取设备列表（分页）并转换为模块内字段
+ * 支持参数：pageNo, pageSize, deviceName/sn/location
+ */
+export async function fetchAccDeviceList(params: Record<string, any>): Promise<{ records: AccDeviceItem[]; total: number }>{
+  const query: Record<string, any> = {
+    pageNo: params?.pageNo ?? 1,
+    pageSize: params?.pageSize ?? 10,
+    deviceName: params?.deviceName,
+    sn: params?.sn,
+    location: params?.location,
+    ids: params?.ids,
+  };
+
+  const res: any = await listDevices(query);
+  const list = (res?.records ?? []).map((d: any) => ({
+    id: String(d.id ?? ''),
+    sn: String(d.sn ?? ''),
+    deviceName: String(d.deviceName ?? d.name ?? ''),
+    location: d.location ? String(d.location) : '',
+    authorized: d.authorized === 1 || d.authorized === '1' ? '已授权' : '未授权',
+  })) as AccDeviceItem[];
+
+  return {
+    records: list,
+    total: Number(res?.total ?? list.length ?? 0),
+  };
+}
