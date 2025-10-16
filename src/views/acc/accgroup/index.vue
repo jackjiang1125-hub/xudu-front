@@ -64,20 +64,21 @@
   import { BasicTable, useTable } from '/@/components/Table';
   import { useModal } from '/@/components/Modal';
   import { useMessage } from '/@/hooks/web/useMessage';
-  import { listAccGroups, getAccGroupDetail, deleteAccGroup, addAccGroup, editAccGroup } from './accgroup.api';
+  import { useRouter } from 'vue-router';
+  import { listAccGroups, getAccGroupDetail, deleteAccGroup, addAccGroup, editAccGroup, listAccGroupMembers, listAccGroupDevices } from './accgroup.api';
   import GroupForm from './groupForm.vue';
   import {
     groupColumns,
     groupSearchFormSchema,
     memberColumns,
     deviceColumns,
-    mockMemberList,
-    mockDeviceList,
     type AccGroupItem,
   } from './accgroup.data';
 
   const { createMessage, createConfirm } = useMessage();
+  const router = useRouter();
   const selectedGroupId = ref<string | null>(null);
+  const suppressSelectionEvent = ref(false);
 
   const groupTableReady = ref(false);
   const memberTableReady = ref(false);
@@ -88,16 +89,8 @@
   };
 
   const currentGroup = ref<AccGroupItem | null>(null);
-
-  const currentMembers = computed(() => {
-    if (!currentGroup.value?.members?.length) return [];
-    return mockMemberList.filter((member) => currentGroup.value!.members!.includes(member.id));
-  });
-
-  const currentDevices = computed(() => {
-    if (!currentGroup.value?.devices?.length) return [];
-    return mockDeviceList.filter((device) => currentGroup.value!.devices!.includes(device.id));
-  });
+  const currentMembers = ref<any[]>([]);
+  const currentDevices = ref<any[]>([]);
 
   const [internalRegisterGroupTable, { setSelectedRowKeys, reload: reloadGroupTable }] = useTable({
     title: '权限组列表',
@@ -124,22 +117,24 @@
       type: 'radio',
       preserveSelectedRowKeys: true,
       onChange: (keys: (string | number)[], rows: AccGroupItem[]) => {
+        if (suppressSelectionEvent.value) {
+          // 程序同步选择触发的事件，直接跳过，避免重复请求
+          suppressSelectionEvent.value = false;
+          return;
+        }
         const record = rows[0];
         if (record) {
-          selectedGroupId.value = record.id;
-          currentGroup.value = record;
-          loadGroupDetail(record.id);
+          // 仅当选择发生变化时才加载详情，避免重复调用
+          const nextId = String(record.id);
+          if (selectedGroupId.value !== nextId) {
+            selectedGroupId.value = nextId;
+            currentGroup.value = record;
+            loadGroupDetail(nextId);
+          } else {
+            currentGroup.value = record;
+          }
         }
       },
-    },
-    onRow: (record: AccGroupItem) => {
-      return {
-        onClick: () => {
-          selectedGroupId.value = record.id;
-          currentGroup.value = record;
-          loadGroupDetail(record.id);
-        },
-      };
     },
   });
 
@@ -177,7 +172,6 @@
     internalRegisterGroupTable(...args);
     groupTableReady.value = true;
     nextTick(() => {
-      reloadGroupTable({ page: 1 });
       syncSelection();
     });
   }
@@ -209,7 +203,29 @@
         members: vo.members ?? [],
         devices: vo.devices ?? [],
       };
+      
+      // 调用真实API获取关联的人员和设备列表
+      await loadGroupMembers(id);
+      await loadGroupDevices(id);
     } catch (e) {}
+  }
+
+  async function loadGroupMembers(groupId: string) {
+    try {
+      const response = await listAccGroupMembers(groupId, 1, 100);
+      currentMembers.value = response.records || [];
+    } catch (e) {
+      currentMembers.value = [];
+    }
+  }
+
+  async function loadGroupDevices(groupId: string) {
+    try {
+      const response = await listAccGroupDevices(groupId, 1, 100);
+      currentDevices.value = response.records || [];
+    } catch (e) {
+      currentDevices.value = [];
+    }
   }
 
   function refreshMemberTable() {
@@ -294,6 +310,8 @@
 
   function syncSelection() {
     if (groupTableReady.value) {
+      // 标记为程序触发的选择变更，避免触发 onChange 再次请求
+      suppressSelectionEvent.value = true;
       setSelectedRowKeys?.(selectedGroupId.value ? [selectedGroupId.value] : []);
     }
   }

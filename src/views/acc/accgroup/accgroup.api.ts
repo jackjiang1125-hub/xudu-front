@@ -13,6 +13,27 @@ export interface AccGroupVO {
   devices?: string[];
 }
 
+export interface AccMemberVO {
+  id: string;
+  memberName?: string;
+  memberCode?: string;
+  department?: string;
+  position?: string;
+  status?: string;
+  remark?: string;
+}
+
+export interface AccDeviceVO {
+  id: string;
+  deviceName?: string;
+  deviceCode?: string;
+  deviceType?: string;
+  location?: string;
+  status?: string;
+  ipAddress?: string;
+  remark?: string;
+}
+
 enum Api {
   list = '/acc/accgroup/list',
   detail = '/acc/accgroup/detail',
@@ -20,6 +41,8 @@ enum Api {
   edit = '/acc/accgroup/edit',
   delete = '/acc/accgroup/delete',
   deleteBatch = '/acc/accgroup/deleteBatch',
+  listMembers = '/acc/accgroupmember/listByGroup',
+  listDevices = '/acc/accgroupdevice/listByGroup',
 }
 
 export const listAccGroups = (params?: Record<string, any>) =>
@@ -39,3 +62,11 @@ export const deleteAccGroup = (id: string) =>
 
 export const deleteBatchAccGroup = (ids: string) =>
   defHttp.delete({ url: Api.deleteBatch, params: { ids } }, { joinParamsToUrl: true });
+
+// 根据权限组ID查询成员列表
+export const listAccGroupMembers = (groupId: string, pageNo: number = 1, pageSize: number = 10) =>
+  defHttp.get({ url: Api.listMembers, params: { groupId, pageNo, pageSize } });
+
+// 根据权限组ID查询设备列表
+export const listAccGroupDevices = (groupId: string, pageNo: number = 1, pageSize: number = 10) =>
+  defHttp.get({ url: Api.listDevices, params: { groupId, pageNo, pageSize } });

@@ -26,6 +26,8 @@
 
 <script lang="ts" setup>
 import { Card as ACard, Row as ARow, Col as ACol, Tag as ATag } from 'ant-design-vue';
+import { onMounted, onUnmounted, ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import { BasicTable, useTable } from '/@/components/Table';
 import {
   memberColumns,
@@ -35,13 +37,41 @@ import {
   fetchAccMemberList,
   fetchAccDeviceList,
 } from '/@/views/acc/accgroup/accgroup.data';
+import { getAccGroupDetail } from '/@/views/acc/accgroup/accgroup.api';
 
 // 人员列表
-const [registerMemberTable] = useTable({
+const memberTableReady = ref(false);
+const route = useRoute();
+const currentGroupId = ref<string>('');
+const memberIds = ref<string[]>([]);
+const deviceIds = ref<string[]>([]);
+
+async function loadGroupIdsIfNeeded() {
+  const gid = (route.query.groupId as string) || '';
+  currentGroupId.value = gid;
+  if (!gid) {
+    memberIds.value = [];
+    deviceIds.value = [];
+    return;
+  }
+  try {
+    const detail = await getAccGroupDetail(gid);
+    memberIds.value = (detail?.members ?? []).map((id: any) => String(id));
+    deviceIds.value = (detail?.devices ?? []).map((id: any) => String(id));
+  } catch (e) {
+    memberIds.value = [];
+    deviceIds.value = [];
+  }
+}
+
+const [internalRegisterMemberTable, { reload: reloadMember }] = useTable({
   title: '人员',
   rowKey: 'id',
   columns: memberColumns,
-  api: (params) => fetchAccMemberList(params),
+  api: (params) => {
+    const ids = memberIds.value?.length ? memberIds.value.join(',') : undefined;
+    return fetchAccMemberList({ ...params, ids });
+  },
   striped: true,
   showIndexColumn: false,
   fetchSetting: { pageField: 'pageNo', sizeField: 'pageSize', listField: 'records', totalField: 'total' },
@@ -53,12 +83,23 @@ const [registerMemberTable] = useTable({
   pagination: { pageSize: 10, pageSizeOptions: ['10', '20', '50'] },
 });
 
+function registerMemberTable(...args: any[]) {
+  (internalRegisterMemberTable as any)(...args);
+  memberTableReady.value = true;
+  // 首次进入主动刷新一次
+  reloadMember();
+}
+
 // 设备列表
-const [registerDeviceTable] = useTable({
+const deviceTableReady = ref(false);
+const [internalRegisterDeviceTable, { reload: reloadDevice }] = useTable({
   title: '设备',
   rowKey: 'id',
   columns: deviceColumns,
-  api: (params) => fetchAccDeviceList(params),
+  api: (params) => {
+    const ids = deviceIds.value?.length ? deviceIds.value.join(',') : undefined;
+    return fetchAccDeviceList({ ...params, ids });
+  },
   striped: true,
   showIndexColumn: false,
   fetchSetting: { pageField: 'pageNo', sizeField: 'pageSize', listField: 'records', totalField: 'total' },
@@ -69,6 +110,40 @@ const [registerDeviceTable] = useTable({
   },
   pagination: { pageSize: 10, pageSizeOptions: ['10', '20', '50'] },
 });
+
+function registerDeviceTable(...args: any[]) {
+  (internalRegisterDeviceTable as any)(...args);
+  deviceTableReady.value = true;
+  reloadDevice();
+}
+
+// 定时刷新，实时更新列表
+let timer: any = null;
+const REFRESH_INTERVAL = 15000; // 15s
+onMounted(() => {
+  // 初次加载，如果带有 groupId 参数，按权限组过滤
+  loadGroupIdsIfNeeded().then(() => {
+    if (memberTableReady.value) reloadMember();
+    if (deviceTableReady.value) reloadDevice();
+  });
+  timer = setInterval(() => {
+    if (memberTableReady.value) reloadMember();
+    if (deviceTableReady.value) reloadDevice();
+  }, REFRESH_INTERVAL);
+});
+onUnmounted(() => {
+  if (timer) clearInterval(timer);
+});
+
+// 监听路由参数变化（从权限组页面跳转附带 groupId）
+watch(
+  () => route.query.groupId,
+  async () => {
+    await loadGroupIdsIfNeeded();
+    if (memberTableReady.value) reloadMember();
+    if (deviceTableReady.value) reloadDevice();
+  }
+);
 </script>
 
 <style scoped>

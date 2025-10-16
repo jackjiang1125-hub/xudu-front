@@ -365,29 +365,34 @@ export const mockDeviceList = [
  * 支持参数：pageNo, pageSize, name(映射 realname), dept(映射 orgCodeTxt), phone
  */
 export async function fetchAccMemberList(params: Record<string, any>): Promise<{ records: AccMemberItem[]; total: number }>{
-  const { pageNo, pageSize, name, dept, phone, ids } = params ?? {};
-  const query: Record<string, any> = {
-    pageNo: pageNo ?? 1,
-    pageSize: pageSize ?? 10,
-  };
-  if (name) query.realname = name;
-  if (dept) query.orgCodeTxt = dept;
-  if (phone) query.phone = phone;
-  if (ids) query.ids = ids;
+  try {
+    const { pageNo, pageSize, name, dept, phone, ids } = params ?? {};
+    const query: Record<string, any> = {
+      pageNo: pageNo ?? 1,
+      pageSize: pageSize ?? 10,
+    };
+    if (name) query.realname = name;
+    if (dept) query.orgCodeTxt = dept;
+    if (phone) query.phone = phone;
+    if (ids) query.ids = ids;
 
-  const res: any = await getUserList(query);
-  const list = (res?.records ?? []).map((u: any) => ({
-    id: String(u.id ?? u.userId ?? u.username ?? ''),
-    name: String(u.realname ?? u.username ?? ''),
-    dept: String(u.orgCodeTxt ?? u.departName ?? ''),
-    phone: u.phone ? String(u.phone) : '',
-    position: u.post ?? u.position ?? '',
-  })) as AccMemberItem[];
+    const res: any = await getUserList(query);
+    const list = (res?.records ?? []).map((u: any) => ({
+      id: String(u.id ?? u.userId ?? u.username ?? ''),
+      name: String(u.realname ?? u.username ?? ''),
+      dept: String(u.orgCodeTxt ?? u.departName ?? ''),
+      phone: u.phone ? String(u.phone) : '',
+      position: u.post ?? u.position ?? '',
+    })) as AccMemberItem[];
 
-  return {
-    records: list,
-    total: Number(res?.total ?? list.length ?? 0),
-  };
+    return {
+      records: list,
+      total: Number(res?.total ?? list.length ?? 0),
+    };
+  } catch (error) {
+    console.error('[fetchAccMemberList] 接口请求失败：', error);
+    return { records: [], total: 0 };
+  }
 }
 
 /**
@@ -395,26 +400,31 @@ export async function fetchAccMemberList(params: Record<string, any>): Promise<{
  * 支持参数：pageNo, pageSize, deviceName/sn/location
  */
 export async function fetchAccDeviceList(params: Record<string, any>): Promise<{ records: AccDeviceItem[]; total: number }>{
-  const query: Record<string, any> = {
-    pageNo: params?.pageNo ?? 1,
-    pageSize: params?.pageSize ?? 10,
-    deviceName: params?.deviceName,
-    sn: params?.sn,
-    location: params?.location,
-    ids: params?.ids,
-  };
+  try {
+    const query: Record<string, any> = {
+      pageNo: params?.pageNo ?? 1,
+      pageSize: params?.pageSize ?? 10,
+      deviceName: params?.deviceName,
+      sn: params?.sn,
+      location: params?.location,
+      ids: params?.ids,
+    };
 
-  const res: any = await listDevices(query);
-  const list = (res?.records ?? []).map((d: any) => ({
-    id: String(d.id ?? ''),
-    sn: String(d.sn ?? ''),
-    deviceName: String(d.deviceName ?? d.name ?? ''),
-    location: d.location ? String(d.location) : '',
-    authorized: d.authorized === 1 || d.authorized === '1' ? '已授权' : '未授权',
-  })) as AccDeviceItem[];
+    const res: any = await listDevices(query);
+    const list = (res?.records ?? []).map((d: any) => ({
+      id: String(d.id ?? ''),
+      sn: String(d.sn ?? ''),
+      deviceName: String(d.deviceName ?? d.name ?? ''),
+      location: d.location ? String(d.location) : '',
+      authorized: d.authorized === 1 || d.authorized === '1' ? '已授权' : '未授权',
+    })) as AccDeviceItem[];
 
-  return {
-    records: list,
-    total: Number(res?.total ?? list.length ?? 0),
-  };
+    return {
+      records: list,
+      total: Number(res?.total ?? list.length ?? 0),
+    };
+  } catch (error) {
+    console.error('[fetchAccDeviceList] 接口请求失败：', error);
+    return { records: [], total: 0 };
+  }
 }
