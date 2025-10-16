@@ -38,6 +38,12 @@
           </a-card>
 
           <a-card title="人员列表" class="group-card" :headStyle="cardHeadStyle">
+            <template #extra>
+              <a-space>
+                <a-button type="primary" :disabled="!selectedGroupId" @click="openMemberSelect">添加人员</a-button>
+                <a-button danger :disabled="memberSelectedRowKeys.length === 0 || !selectedGroupId" @click="removeSelectedMembers">移除所选</a-button>
+              </a-space>
+            </template>
             <template v-if="currentMembers.length">
               <BasicTable @register="handleRegisterMemberTable" />
             </template>
@@ -45,6 +51,12 @@
           </a-card>
 
           <a-card title="设备列表" class="group-card" :headStyle="cardHeadStyle">
+            <template #extra>
+              <a-space>
+                <a-button type="primary" :disabled="!selectedGroupId" @click="openDeviceSelect">添加设备</a-button>
+                <a-button danger :disabled="deviceSelectedRowKeys.length === 0 || !selectedGroupId" @click="removeSelectedDevices">移除所选</a-button>
+              </a-space>
+            </template>
             <template v-if="currentDevices.length">
               <BasicTable @register="handleRegisterDeviceTable" />
             </template>
@@ -55,6 +67,17 @@
       </a-col>
     </a-row>
     <GroupForm @register="registerForm" @success="handleFormSuccess" />
+    <!-- 用户选择弹窗 -->
+    <UserSelectModal :multi="true" @register="registerUserSelectModal" @selected="onMemberSelected" />
+    <!-- 设备选择弹窗 -->
+    <BasicModal @register="registerDeviceSelectModal" :title="'选择设备'" width="900px" @ok="onDeviceSelectOk">
+      <BasicTable
+        @register="registerDeviceSelectTable"
+        :rowSelection="deviceSelectRowSelection"
+        :useSearchForm="true"
+        :formConfig="{ showActionButtonGroup: false }"
+      />
+    </BasicModal>
   </PageWrapper>
 </template>
 
@@ -62,10 +85,10 @@
   import { computed, nextTick, ref, watch } from 'vue';
   import { PageWrapper } from '/@/components/Page';
   import { BasicTable, useTable } from '/@/components/Table';
-  import { useModal } from '/@/components/Modal';
+  import { BasicModal, useModal } from '/@/components/Modal';
   import { useMessage } from '/@/hooks/web/useMessage';
   import { useRouter } from 'vue-router';
-  import { listAccGroups, getAccGroupDetail, deleteAccGroup, addAccGroup, editAccGroup, listAccGroupMembers, listAccGroupDevices } from './accgroup.api';
+  import { listAccGroups, getAccGroupDetail, deleteAccGroup, addAccGroup, editAccGroup, listAccGroupMembers, listAccGroupDevices, addMembersToGroup, removeMembersFromGroup, addDevicesToGroup, removeDevicesFromGroup } from './accgroup.api';
   import GroupForm from './groupForm.vue';
   import {
     groupColumns,
@@ -74,6 +97,9 @@
     deviceColumns,
     type AccGroupItem,
   } from './accgroup.data';
+  import UserSelectModal from '/@/components/Form/src/jeecg/components/userSelect/UserSelectModal.vue';
+  import { createAsyncComponent } from '/@/utils/factory/createAsyncComponent';
+  import { listDevices as listAllDevices } from '/@/views/acc/devce.api';
 
   const { createMessage, createConfirm } = useMessage();
   const router = useRouter();
@@ -91,6 +117,8 @@
   const currentGroup = ref<AccGroupItem | null>(null);
   const currentMembers = ref<any[]>([]);
   const currentDevices = ref<any[]>([]);
+  const memberSelectedRowKeys = ref<string[]>([]);
+  const deviceSelectedRowKeys = ref<string[]>([]);
 
   const [internalRegisterGroupTable, { setSelectedRowKeys, reload: reloadGroupTable }] = useTable({
     title: '权限组列表',
@@ -142,6 +170,7 @@
     columns: memberColumns,
     dataSource: [],
     bordered: true,
+    rowKey: 'id',
     pagination: {
       pageSize: 5,
       pageSizeOptions: ['5', '10', '20'],
@@ -150,12 +179,20 @@
     useSearchForm: false,
     canResize: false,
     scroll: { y: 240 },
+    rowSelection: {
+      type: 'checkbox',
+      preserveSelectedRowKeys: true,
+      onChange: (keys: (string | number)[]) => {
+        memberSelectedRowKeys.value = (keys || []).map(String);
+      },
+    },
   });
 
   const [internalRegisterDeviceTable, { setTableData: setDeviceTableData }] = useTable({
     columns: deviceColumns,
     dataSource: [],
     bordered: true,
+    rowKey: 'id',
     pagination: {
       pageSize: 5,
       pageSizeOptions: ['5', '10', '20'],
@@ -164,6 +201,13 @@
     useSearchForm: false,
     canResize: false,
     scroll: { y: 240 },
+    rowSelection: {
+      type: 'checkbox',
+      preserveSelectedRowKeys: true,
+      onChange: (keys: (string | number)[]) => {
+        deviceSelectedRowKeys.value = (keys || []).map(String);
+      },
+    },
   });
 
   const [registerForm, { openModal }] = useModal();
@@ -243,6 +287,102 @@
   function refreshAllTables() {
     refreshMemberTable();
     refreshDeviceTable();
+  }
+
+  // 选择成员并添加到当前组
+  const [registerUserSelectModal, { openModal: openUserSelectModal, closeModal: closeUserSelectModal }] = useModal();
+  function openMemberSelect() {
+    if (!selectedGroupId.value) return;
+    // 传入已在组内的用户，避免重复选择
+    const excludeIds = (currentMembers.value || []).map((m: any) => String(m.id)).filter(Boolean);
+    openUserSelectModal(true, { excludeUserIdList: excludeIds });
+  }
+
+  async function onMemberSelected(users: any[]) {
+    if (!selectedGroupId.value) return;
+    const ids = (users || []).map((u: any) => String(u.id)).filter(Boolean);
+    if (!ids.length) return;
+    try {
+      await addMembersToGroup(selectedGroupId.value, ids);
+      createMessage.success('已添加所选人员');
+      await loadGroupMembers(selectedGroupId.value);
+      // 成功后关闭选择用户弹窗
+      closeUserSelectModal();
+    } catch (e: any) {
+      createMessage.error(e?.message || '添加人员失败');
+    }
+  }
+
+  async function removeSelectedMembers() {
+    if (!selectedGroupId.value || memberSelectedRowKeys.value.length === 0) return;
+    try {
+      await removeMembersFromGroup(selectedGroupId.value, memberSelectedRowKeys.value);
+      createMessage.success('已移除所选人员');
+      memberSelectedRowKeys.value = [];
+      await loadGroupMembers(selectedGroupId.value);
+    } catch (e: any) {
+      createMessage.error(e?.message || '移除人员失败');
+    }
+  }
+
+  // 选择设备并添加到当前组
+  const [registerDeviceSelectModal, deviceModal] = useModal();
+  const [registerDeviceSelectTable, deviceSelectTable] = useTable({
+    title: '设备列表',
+    api: (params) => listAllDevices({ ...params }),
+    columns: deviceColumns,
+    rowKey: 'id',
+    bordered: true,
+    useSearchForm: true,
+    formConfig: {
+      labelWidth: 100,
+      labelAlign: 'right',
+      compact: true,
+      showAdvancedButton: false,
+    },
+    pagination: {
+      pageSize: 10,
+      pageSizeOptions: ['10', '20', '50'],
+    },
+  });
+
+  const deviceSelectKeys = ref<string[]>([]);
+  const deviceSelectRowSelection = {
+    type: 'checkbox',
+    onChange: (keys: (string | number)[]) => {
+      deviceSelectKeys.value = (keys || []).map(String);
+    },
+  } as any;
+
+  function openDeviceSelect() {
+    if (!selectedGroupId.value) return;
+    deviceModal.openModal(true);
+  }
+
+  async function onDeviceSelectOk() {
+    if (!selectedGroupId.value || deviceSelectKeys.value.length === 0) return;
+    try {
+      await addDevicesToGroup(selectedGroupId.value, deviceSelectKeys.value);
+      createMessage.success('已添加所选设备');
+      deviceSelectKeys.value = [];
+      await loadGroupDevices(selectedGroupId.value);
+      // 关闭设备选择弹窗
+      deviceModal.closeModal();
+    } catch (e: any) {
+      createMessage.error(e?.message || '添加设备失败');
+    }
+  }
+
+  async function removeSelectedDevices() {
+    if (!selectedGroupId.value || deviceSelectedRowKeys.value.length === 0) return;
+    try {
+      await removeDevicesFromGroup(selectedGroupId.value, deviceSelectedRowKeys.value);
+      createMessage.success('已移除所选设备');
+      deviceSelectedRowKeys.value = [];
+      await loadGroupDevices(selectedGroupId.value);
+    } catch (e: any) {
+      createMessage.error(e?.message || '移除设备失败');
+    }
   }
 
   function handleCreate() {

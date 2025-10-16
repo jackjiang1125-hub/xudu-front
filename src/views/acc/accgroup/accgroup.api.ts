@@ -43,6 +43,10 @@ enum Api {
   deleteBatch = '/acc/accgroup/deleteBatch',
   listMembers = '/acc/accgroupmember/listByGroup',
   listDevices = '/acc/accgroupdevice/listByGroup',
+  addMembers = '/acc/accgroupmember/addMembers',
+  removeMembers = '/acc/accgroupmember/removeMembers',
+  addDevices = '/acc/accgroupdevice/addDevices',
+  removeDevices = '/acc/accgroupdevice/removeDevices',
 }
 
 export const listAccGroups = (params?: Record<string, any>) =>
@@ -70,3 +74,19 @@ export const listAccGroupMembers = (groupId: string, pageNo: number = 1, pageSiz
 // 根据权限组ID查询设备列表
 export const listAccGroupDevices = (groupId: string, pageNo: number = 1, pageSize: number = 10) =>
   defHttp.get({ url: Api.listDevices, params: { groupId, pageNo, pageSize } });
+
+// 批量添加成员到权限组
+export const addMembersToGroup = (groupId: string, ids: string[]) =>
+  defHttp.post({ url: Api.addMembers, data: { groupId, ids } });
+
+// 批量从权限组移除成员
+export const removeMembersFromGroup = (groupId: string, ids: string[]) =>
+  defHttp.post({ url: Api.removeMembers, data: { groupId, ids } });
+
+// 批量添加设备到权限组
+export const addDevicesToGroup = (groupId: string, ids: string[]) =>
+  defHttp.post({ url: Api.addDevices, data: { groupId, ids } });
+
+// 批量从权限组移除设备
+export const removeDevicesFromGroup = (groupId: string, ids: string[]) =>
+  defHttp.post({ url: Api.removeDevices, data: { groupId, ids } });
