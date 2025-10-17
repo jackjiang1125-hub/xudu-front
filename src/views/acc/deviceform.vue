@@ -1,4 +1,4 @@
-﻿<template>
+<template>
   <BasicModal @register="registerModal" :title="modalTitle" :footer="null" :width="720">
     <a-spin :spinning="loading">
       <Description @register="registerDesc" />
@@ -10,7 +10,7 @@
   import { ref } from 'vue';
   import { BasicModal, useModalInner } from '/@/components/Modal';
   import { Description, useDescription } from '/@/components/Description';
-  import { detailSchema } from './device.data.js';
+  import { detailSchema } from './device.data';
   import { getDeviceDetail, type AccDeviceModel } from './devce.api';
   import { dateUtil } from '/@/utils/dateUtil';
   import { useMessage } from '/@/hooks/web/useMessage';

@@ -1,8 +1,11 @@
-﻿<template>
+<template>
   <BasicTable @register="registerTable">
     <template #tableTitle>
       <a-button type="primary" preIcon="ant-design:search-outlined" @click="handleOpenSearch">
         搜索设备
+      </a-button>
+      <a-button danger style="margin-left:8px;" :disabled="selectedRowKeys.length === 0" @click="confirmDelete">
+        删除设备
       </a-button>
     </template>
     <template #authorized="{ text }">
@@ -24,12 +27,13 @@
   import { useMessage } from '/@/hooks/web/useMessage';
   import { useModal } from '/@/components/Modal';
   import { useListPage } from '/@/hooks/system/useListPage';
+  import { ref } from 'vue';
   import DeviceForm from './deviceform.vue';
   import SearchDeviceForm from './searchDeviceForm.vue';
-  import { columns, searchFormSchema } from './device.data.js';
-  import { listDevices, type AccDeviceModel } from './devce.api';
+  import { columns, searchFormSchema } from './device.data';
+  import { listDevices, type AccDeviceModel, addDeviceBySn, authorizeAccDevice, deleteBatchAccDevice } from './devce.api';
 
-  const { createMessage } = useMessage();
+  const { createMessage, createConfirm } = useMessage();
 
   const [registerDetail, { openModal: openDetail }] = useModal();
   const [registerSearch, { openModal: openSearch }] = useModal();
@@ -45,6 +49,13 @@
         fixed: 'right',
         title: '操作',
       },
+      rowSelection: {
+        type: 'checkbox',
+        preserveSelectedRowKeys: true,
+        onChange: (keys: (string | number)[]) => {
+          selectedRowKeys.value = (keys || []).map(String);
+        },
+      },
       formConfig: {
         labelWidth: 120,
         schemas: searchFormSchema,
@@ -53,8 +64,7 @@
       },
     },
   });
-
-  const [registerTable] = tableContext;
+  const [registerTable, { reload }] = tableContext;
 
   function handleOpenSearch() {
     openSearch(true);
@@ -78,8 +88,19 @@
     });
   }
 
-  function handleAuthorize(record: AccDeviceModel) {
-    createMessage.success(`已选择向设备 ${record?.deviceName ?? record?.sn ?? ''} 添加授权`);
+  async function handleAuthorize(record: AccDeviceModel) {
+    const sn = record?.sn as string;
+    const deviceName = record?.deviceName as string | undefined;
+    const ipAddress = record?.ipAddress as string | undefined;
+    try {
+      await addDeviceBySn({ sn, deviceName, ipAddress });
+      await authorizeAccDevice({ sn });
+      createMessage.success(`设备 ${deviceName ?? sn} 已添加并授权`);
+      reload();
+    } catch (e) {
+      console.error(e);
+      createMessage.error('授权失败，请稍后重试');
+    }
   }
 
   function getTableActions(record: AccDeviceModel): ActionItem[] {
@@ -89,5 +110,27 @@
         onClick: handleDetail.bind(null, record),
       },
     ];
+  }
+  const selectedRowKeys = ref<string[]>([]);
+  function confirmDelete() {
+    if (selectedRowKeys.value.length === 0) return;
+    createConfirm({
+      title: '删除设备',
+      content: `确认删除所选 ${selectedRowKeys.value.length} 台设备？`,
+      iconType: 'warning',
+      onOk: handleBatchDelete,
+    });
+  }
+
+  async function handleBatchDelete() {
+    try {
+      await deleteBatchAccDevice(selectedRowKeys.value);
+      createMessage.success('删除成功');
+      selectedRowKeys.value = [];
+      reload();
+    } catch (e) {
+      console.error(e);
+      createMessage.error('删除失败，请稍后重试');
+    }
   }
 </script>

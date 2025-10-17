@@ -334,7 +334,8 @@ export function useListTable(tableProps: TableProps): [
       }
     },
   });
-  delete defaultTableProps.rowSelection;
+  // 保持 rowSelection 传递给 BasicTable，以启用自定义选择列注入
+  defaultTableProps.rowSelection = defaultRowSelection;
 
   /**
    * 设置表格参数
