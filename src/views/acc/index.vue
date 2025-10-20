@@ -19,6 +19,8 @@
   </BasicTable>
   <DeviceForm @register="registerDetail" />
   <SearchDeviceForm @register="registerSearch" @authorize="handleAuthorize" />
+  <!-- 新增：设备授权确认弹窗 -->
+  <AuthorizeDeviceModal @register="registerAuthorize" @success="reload" />
 </template>
 
 <script lang="ts" setup>
@@ -30,13 +32,16 @@
   import { ref } from 'vue';
   import DeviceForm from './deviceform.vue';
   import SearchDeviceForm from './searchDeviceForm.vue';
+  import AuthorizeDeviceModal from './authorizeDeviceModal.vue';
   import { columns, searchFormSchema } from './device.data';
-  import { listDevices, type AccDeviceModel, addDeviceBySn, authorizeAccDevice, deleteBatchAccDevice } from './devce.api';
+  import { listDevices, type AccDeviceModel, deleteBatchAccDevice } from './devce.api';
 
   const { createMessage, createConfirm } = useMessage();
 
   const [registerDetail, { openModal: openDetail }] = useModal();
   const [registerSearch, { openModal: openSearch }] = useModal();
+  // 新增：授权确认弹窗 modal 控制器
+  const [registerAuthorize, { openModal: openAuthorize }] = useModal();
 
   const { tableContext } = useListPage({
     designScope: 'acc-device',
@@ -88,19 +93,9 @@
     });
   }
 
+  // 修改：点击授权不直接调用接口，弹出确认弹窗
   async function handleAuthorize(record: AccDeviceModel) {
-    const sn = record?.sn as string;
-    const deviceName = record?.deviceName as string | undefined;
-    const ipAddress = record?.ipAddress as string | undefined;
-    try {
-      await addDeviceBySn({ sn, deviceName, ipAddress });
-      await authorizeAccDevice({ sn });
-      createMessage.success(`设备 ${deviceName ?? sn} 已添加并授权`);
-      reload();
-    } catch (e) {
-      console.error(e);
-      createMessage.error('授权失败，请稍后重试');
-    }
+    openAuthorize(true, { record });
   }
 
   function getTableActions(record: AccDeviceModel): ActionItem[] {

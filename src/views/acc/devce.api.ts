@@ -18,6 +18,7 @@ export interface AccDeviceModel {
   authorized?: number;
   registryCode?: string;
   remark?: string;
+  isReset?: boolean;
 }
 
 enum Api {
@@ -25,6 +26,7 @@ enum Api {
   detail = '/acc/device/detail',
   listAuthDevice = '/acc/device/listAuthDevice',
   addBySn = '/acc/device/addBySn',
+  add = '/acc/device/add',
   authorize = '/acc/device/authorize',
   getBySn = '/acc/device/getBySn',
   delete = '/acc/device/delete',
@@ -40,11 +42,29 @@ export const getDeviceDetail = (params: Record<string, any>) =>
 export const listAuthDevices = (params?: Record<string, any>) =>
   defHttp.get({ url: Api.listAuthDevice, params });
 
-export const addDeviceBySn = (data: { sn: string; deviceName?: string; ipAddress?: string }) =>
-  defHttp.post({ url: Api.addBySn, data });
+// 添加设备（支持扩展字段）
+export const addDeviceBySn = (data: {
+  sn: string;
+  deviceName?: string;
+  ipAddress?: string;
+  resetRequired?: boolean;
+  extras?: Record<string, any>;
+}) => defHttp.post({ url: Api.addBySn, data });
 
-export const authorizeAccDevice = (data: { sn: string; registryCode?: string; remark?: string }) =>
-  defHttp.post({ url: Api.authorize, data });
+// 直接保存门禁设备（符合 AccDeviceVO）
+export const addAccDevice = (vo: Partial<AccDeviceModel>) =>
+  defHttp.post({ url: Api.add, data: vo });
+
+// 授权设备（支持扩展字段）
+export const authorizeAccDevice = (data: {
+  sn: string;
+  registryCode?: string;
+  remark?: string;
+  deviceName?: string;
+  ipAddress?: string;
+  resetRequired?: boolean;
+  extras?: Record<string, any>;
+}) => defHttp.post({ url: Api.authorize, data });
 
 export const getAccDeviceBySn = (params: { sn: string }) =>
   defHttp
