@@ -2,7 +2,6 @@
   <div class="p-2">
     <BasicTable @register="registerTable">
       <template #tableTitle>
-        <a-button type="primary" preIcon="ant-design:plus-outlined" @click="handleCreate">新增</a-button>
       </template>
       <template #action="{ record }">
         <TableAction :actions="getTableAction(record)" />
@@ -61,7 +60,6 @@
     return [
       { label: '编辑', icon: 'ant-design:edit-outlined', onClick: handleEdit.bind(null, record) },
       { label: '详情', icon: 'ant-design:info-circle-outlined', onClick: handleDetail.bind(null, record) },
-      { label: '删除', icon: 'ant-design:delete-outlined', color: 'error', popConfirm: { title: '是否确认删除', confirm: handleDelete.bind(null, record) } },
     ];
   }
 </script>

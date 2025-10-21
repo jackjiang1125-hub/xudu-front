@@ -12,11 +12,6 @@ export const typeOptions = [
 // 表格列定义
 export const columns: BasicColumn[] = [
   {
-    title: '读头ID',
-    dataIndex: 'readerId',
-    width: 120,
-  },
-  {
     title: '读头名称',
     dataIndex: 'name',
     width: 150,
@@ -59,12 +54,6 @@ export const columns: BasicColumn[] = [
 // 搜索表单配置
 export const searchFormSchema: FormSchema[] = [
   {
-    field: 'readerId',
-    label: '读头ID',
-    component: 'JInput',
-    colProps: { span: 6 },
-  },
-  {
     field: 'name',
     label: '读头名称',
     component: 'JInput',
@@ -94,15 +83,6 @@ export const formSchema: FormSchema[] = [
     field: 'id',
     component: 'Input',
     show: false,
-  },
-  {
-    field: 'readerId',
-    label: '读头ID',
-    component: 'JInput',
-    required: true,
-    componentProps: {
-      placeholder: '请输入读头ID',
-    },
   },
   {
     field: 'name',

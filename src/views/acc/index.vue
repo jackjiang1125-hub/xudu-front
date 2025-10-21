@@ -7,6 +7,48 @@
       <a-button danger style="margin-left:8px;" :disabled="selectedRowKeys.length === 0" @click="confirmDelete">
         删除设备
       </a-button>
+      <a-dropdown trigger="['click']" placement="bottomLeft">
+        <a-button type="primary" style="margin-left:8px;" preIcon="ant-design:setting-outlined">
+          设备操作
+        </a-button>
+        <template #overlay>
+          <a-menu @click="onOperationSelect">
+            <a-menu-item key="setVerification">设置后台验证参数</a-menu-item>
+            <a-menu-item key="setTimezone">设置设备时区</a-menu-item>
+            <a-menu-item key="setRegistrar">设置登记机</a-menu-item>
+            <a-menu-item key="setBioThreshold">修改生物识别阈值</a-menu-item>
+            <a-menu-item key="setExtendedParams">设置扩展参数</a-menu-item>
+            <a-menu-item key="setNtp">NTP服务器设置</a-menu-item>
+            <a-menu-item key="replaceDevice">替换设备</a-menu-item>
+            <a-menu-item key="setFaceBackend">设置人脸后台比对参数</a-menu-item>
+          </a-menu>
+        </template>
+      </a-dropdown>
+      <a-dropdown trigger="['click']" placement="bottomLeft">
+        <a-button type="primary" style="margin-left:8px;" preIcon="ant-design:setting-outlined">
+          查看与获取
+        </a-button>
+        <template #overlay>
+          <a-menu @click="onOperationSelect">
+            <a-menu-item key="setVerification">获取设备参数</a-menu-item>
+            <a-menu-item key="setTimezone">获取人员信息</a-menu-item>
+            <a-menu-item key="setRegistrar">获取事件记录</a-menu-item>
+            <a-menu-item key="setBioThreshold">查看设备中门禁规则</a-menu-item>
+            <a-menu-item key="setExtendedParams">查询设备容量</a-menu-item>
+          </a-menu>
+        </template>
+      </a-dropdown>
+      <a-dropdown trigger="['click']" placement="bottomLeft">
+        <a-button type="primary" style="margin-left:8px;" preIcon="ant-design:setting-outlined">
+          通讯
+        </a-button>
+        <template #overlay>
+          <a-menu @click="onOperationSelect">
+            <a-menu-item key="setVerification">修改ip地址</a-menu-item>
+            <a-menu-item key="setTimezone">切换网络连接</a-menu-item>
+          </a-menu>
+        </template>
+      </a-dropdown>
     </template>
     <template #authorized="{ text }">
       <a-tag :color="Number(text) === 1 ? 'success' : 'default'">
@@ -126,6 +168,41 @@
     } catch (e) {
       console.error(e);
       createMessage.error('删除失败，请稍后重试');
+    }
+  }
+  function onOperationSelect({ key }) {
+    if (!selectedRowKeys || selectedRowKeys.length === 0) {
+      createMessage.warning('请选择设备');
+      return;
+    }
+    const ids = selectedRowKeys.join(',');
+    switch (key) {
+      case 'setVerification':
+        createMessage.info('设置后台验证参数：' + ids);
+        break;
+      case 'setTimezone':
+        createMessage.info('设置设备时区：' + ids);
+        break;
+      case 'setRegistrar':
+        createMessage.info('设置登记机：' + ids);
+        break;
+      case 'setBioThreshold':
+        createMessage.info('修改生物识别阈值：' + ids);
+        break;
+      case 'setExtendedParams':
+        createMessage.info('设置扩展参数：' + ids);
+        break;
+      case 'setNtp':
+        createMessage.info('NTP服务器设置：' + ids);
+        break;
+      case 'replaceDevice':
+        createMessage.info('替换设备：' + ids);
+        break;
+      case 'setFaceBackend':
+        createMessage.info('设置人脸后台比对参数：' + ids);
+        break;
+      default:
+        break;
     }
   }
 </script>

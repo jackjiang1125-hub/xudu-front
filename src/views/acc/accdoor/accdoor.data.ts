@@ -1,20 +1,10 @@
 import { BasicColumn, FormSchema } from '/@/components/Table';
 
 export const columns: BasicColumn[] = [
-  { title: '设备名称', dataIndex: 'deviceName', width: 200, align: 'left' },
+  { title: '设备名称', dataIndex: 'deviceName', width: 200 },
   { title: '门名称', dataIndex: 'doorName', width: 180 },
   { title: '门编号', dataIndex: 'doorNumber', width: 100 },
   { title: '验证方式', dataIndex: 'verificationMethod', width: 120 },
-  { title: '主机出入', dataIndex: 'hostAccessStatus', width: 100 },
-  { title: '从机出入', dataIndex: 'slaveAccessStatus', width: 100 },
-  { title: '锁驱动(秒)', dataIndex: 'lockDriveDuration', width: 120 },
-  {
-    title: '禁用报警提醒',
-    dataIndex: 'disableAlarmReminder',
-    width: 120,
-    customRender: ({ text }) => (text ? '是' : '否'),
-  },
-  { title: 'IP地址', dataIndex: 'ipAddress', width: 160 },
 ];
 
 export const searchFormSchema: FormSchema[] = [
