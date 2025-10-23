@@ -4,16 +4,6 @@
     <BasicTable @register="registerTable" :rowSelection="rowSelection">
       <!--插槽:table标题-->
       <template #tableTitle>
-        <a-button type="primary" @click="handleAdd" preIcon="ant-design:plus-outlined"> 新增读头</a-button>
-        <a-button
-          type="primary"
-          color="error"
-          preIcon="ant-design:delete-outlined"
-          :disabled="!hasSelected"
-          @click="batchHandleDelete"
-        >
-          批量删除
-        </a-button>
       </template>
       <!--操作栏-->
       <template #action="{ record }">
@@ -26,17 +16,6 @@
             {
               label: '详情',
               onClick: handleDetail.bind(null, record),
-            },
-          ]"
-          :dropDownActions="[
-            {
-              label: '删除',
-              color: 'error',
-              popConfirm: {
-                title: '是否确认删除',
-                placement: 'topLeft',
-                confirm: handleDelete.bind(null, record),
-              },
             },
           ]"
         />
