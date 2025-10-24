@@ -23,19 +23,37 @@ export const columns: BasicColumn[] = [
     title: '制造商',
     dataIndex: 'manufacturer',
     width: 120,
-    customRender: ({ text }) => render.renderDict(text, 'xudu_manufacturer'),
+    customRender: ({ text, record }) => {
+      const display = record?.manufacturerText || record?.manufacturer_dictText;
+      if (display) {
+        return h('span', display);
+      }
+      return render.renderDict(text, 'xudu_manufacturer');
+    },
   },
   {
     title: '所属模块',
     dataIndex: 'model',
     width: 120,
-    customRender: ({ text }) => render.renderDict(text, 'xudu_model_video'),
+    customRender: ({ text, record }) => {
+      const display = record?.modelText || record?.model_dictText;
+      if (display) {
+        return h('span', display);
+      }
+      return render.renderDict(text, 'xudu_model_video');
+    },
   },
   {
     title: '监控类型',
     dataIndex: 'type',
     width: 100,
-    customRender: ({ text }) => render.renderDict(text, 'xudu_video_type'),
+    customRender: ({ text, record }) => {
+      const display = record?.typeText || record?.type_dictText;
+      if (display) {
+        return h('span', display);
+      }
+      return render.renderDict(text, 'xudu_video_type');
+    },
   },
   {
     title: '在线状态',

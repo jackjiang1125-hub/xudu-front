@@ -68,6 +68,6 @@ export const importVideos = (file) => {
 export const preparePlay = (cameraId: string, target: string = 'PC', preferNvenc: boolean = false) => {
   return defHttp.get({ 
     url: Api.preparePlay, 
-    params: { cameraId, target, preferNvenc } 
+    params: { cameraId, target, preferNvenc, audio: 1 }
   });
-};
+};
