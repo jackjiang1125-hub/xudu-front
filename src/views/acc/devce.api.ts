@@ -31,6 +31,7 @@ enum Api {
   getBySn = '/acc/device/getBySn',
   delete = '/acc/device/delete',
   deleteBatch = '/acc/device/deleteBatch',
+  syncTime = '/acc/device/syncTime',
 }
 
 export const listDevices = (params?: Record<string, any>) =>
@@ -79,3 +80,7 @@ export const deleteBatchAccDevice = (ids: string[]) =>
     { url: Api.deleteBatch, params: { ids: ids.join(',') } },
     { joinParamsToUrl: true }
   );
+
+// 批量同步设备时间
+export const syncAccDeviceTime = (data: { sns: string[]; timestamp?: number }) =>
+  defHttp.post({ url: Api.syncTime, data });

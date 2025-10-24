@@ -8,6 +8,18 @@
         删除设备
       </a-button>
       <a-dropdown trigger="['click']" placement="bottomLeft">
+        <a-button type="primary" style="margin-left:8px;" preIcon="ant-design:setting-outlined" :loading="syncingTime">
+          控制
+        </a-button>
+        <template #overlay>
+          <a-menu @click="onOperationSelect">
+            <a-menu-item key="setTime">同步时间</a-menu-item>
+            <a-menu-item key="setTimezone">启动</a-menu-item>
+            <a-menu-item key="setRegistrar">禁用</a-menu-item>
+          </a-menu>
+        </template>
+      </a-dropdown>
+      <a-dropdown trigger="['click']" placement="bottomLeft">
         <a-button type="primary" style="margin-left:8px;" preIcon="ant-design:setting-outlined">
           设备操作
         </a-button>
@@ -76,7 +88,7 @@
   import SearchDeviceForm from './searchDeviceForm.vue';
   import AuthorizeDeviceModal from './authorizeDeviceModal.vue';
   import { columns, searchFormSchema } from './device.data';
-  import { listDevices, type AccDeviceModel, deleteBatchAccDevice } from './devce.api';
+  import { listDevices, type AccDeviceModel, deleteBatchAccDevice, syncAccDeviceTime } from './devce.api';
 
   const { createMessage, createConfirm } = useMessage();
 
@@ -111,7 +123,7 @@
       },
     },
   });
-  const [registerTable, { reload }] = tableContext;
+  const [registerTable, { reload, getSelectRows }] = tableContext;
 
   function handleOpenSearch() {
     openSearch(true);
@@ -149,6 +161,7 @@
     ];
   }
   const selectedRowKeys = ref<string[]>([]);
+  const syncingTime = ref<boolean>(false);
   function confirmDelete() {
     if (selectedRowKeys.value.length === 0) return;
     createConfirm({
@@ -170,13 +183,38 @@
       createMessage.error('删除失败，请稍后重试');
     }
   }
-  function onOperationSelect({ key }) {
-    if (!selectedRowKeys || selectedRowKeys.length === 0) {
+  async function onOperationSelect({ key }) {
+    if (!selectedRowKeys || selectedRowKeys.value.length === 0) {
       createMessage.warning('请选择设备');
       return;
     }
-    const ids = selectedRowKeys.join(',');
+    const ids = selectedRowKeys.value.join(',');
     switch (key) {
+      case 'setTime': {
+        const rows = getSelectRows?.() || [];
+        const sns: string[] = rows.map((r: any) => r?.sn).filter((sn: any) => !!sn);
+        if (sns.length === 0) {
+          createMessage.warning('所选设备缺少序列号，无法同步时间');
+          return;
+        }
+        try {
+          syncingTime.value = true;
+          const res: any = await syncAccDeviceTime({ sns });
+          const total = res?.total ?? sns.length;
+          const success = res?.success ?? total;
+          const failedList: string[] = res?.failed ?? [];
+          if (failedList.length > 0) {
+            createMessage.error(`同步时间失败 ${failedList.length} 台：${failedList.join(',')}`);
+          }
+          createMessage.success(`已触发同步时间，成功 ${success}/${total}`);
+        } catch (e) {
+          console.error(e);
+          createMessage.error('同步时间失败，请稍后重试');
+        } finally {
+          syncingTime.value = false;
+        }
+        break;
+      }
       case 'setVerification':
         createMessage.info('设置后台验证参数：' + ids);
         break;
