@@ -3,10 +3,12 @@
     <BasicTable @register="registerTable">
       <template #tableTitle>
         <div class="table-header">
-          <a-alert type="info" message="演示数据仅用于界面展示，后端接口接入后可替换为真实数据。" show-icon />
           <a-space>
             <a-button type="primary" preIcon="ant-design:plus-outlined" @click="handleCreate">
               新增分类
+            </a-button>
+            <a-button type="primary" danger preIcon="ant-design:delete-outlined" @click="handleBatchDelete" :disabled="!selectedRowKeys.length">
+              批量删除 ({{ selectedRowKeys.length }})
             </a-button>
             <a-button preIcon="ant-design:reload-outlined" @click="reload">
               刷新
@@ -23,29 +25,23 @@
         <TableAction :actions="getTableActions(record)" />
       </template>
     </BasicTable>
-    <BasicModal v-model:visible="detailVisible" title="分类详情" :footer="null" width="640">
-      <a-descriptions v-if="detailRecord" bordered :column="2" size="small">
-        <a-descriptions-item label="分类编号">{{ detailRecord.categoryCode }}</a-descriptions-item>
-        <a-descriptions-item label="分类名称">{{ detailRecord.categoryName }}</a-descriptions-item>
-        <a-descriptions-item label="展示别名">{{ detailRecord.alias }}</a-descriptions-item>
-        <a-descriptions-item label="负责人">{{ detailRecord.manager }}</a-descriptions-item>
-        <a-descriptions-item label="商品数量">{{ detailRecord.productCount }}</a-descriptions-item>
-        <a-descriptions-item label="排序号">{{ detailRecord.displayOrder }}</a-descriptions-item>
-        <a-descriptions-item label="状态">
-          <a-tag :color="detailRecord.status === 'enabled' ? 'success' : 'default'">
-            {{ formatStatus(detailRecord.status) }}
-          </a-tag>
-        </a-descriptions-item>
-        <a-descriptions-item label="创建时间">{{ detailRecord.createdAt }}</a-descriptions-item>
-        <a-descriptions-item label="更新时间">{{ detailRecord.updatedAt }}</a-descriptions-item>
-        <a-descriptions-item label="分类简介" :span="2">
-          {{ detailRecord.description || '暂无简介' }}
-        </a-descriptions-item>
-        <a-descriptions-item label="备注信息" :span="2">
-          {{ detailRecord.remark || '暂无备注' }}
-        </a-descriptions-item>
-      </a-descriptions>
-      <a-empty v-else description="请选择一条分类记录查看详情" />
+
+    <BasicModal
+      v-model:visible="formVisible"
+      :title="currentRecord?.id ? '编辑分类' : '新增分类'"
+      width="640px"
+      :footer="null"
+    >
+      <ProductCategoryModal
+        :key="modalKey.value"
+        :record="currentRecord"
+        @success="handleModalSuccess"
+        @cancel="() => {
+          formVisible.value = false;
+          // 取消时也更新key，强制重新创建组件
+          modalKey.value++;
+        }"
+      />
     </BasicModal>
   </PageWrapper>
 </template>
@@ -61,75 +57,53 @@
   import {
     categoryColumns,
     categorySearchFormSchema,
-    mockProductCategoryList,
     type ProductCategoryItem,
   } from './productCategory.data';
+import {
+  listProductCategory,
+  addProductCategory,
+  editProductCategory,
+  deleteProductCategory,
+  deleteBatchProductCategory
+} from './productCategory.api';
+import ProductCategoryModal from './ProductCategoryModal.vue';
 
   dayjs.extend(isBetween);
 
-  const categoryStore = ref<ProductCategoryItem[]>([...mockProductCategoryList]);
-  const detailVisible = ref(false);
-  const detailRecord = ref<ProductCategoryItem | null>(null);
-  const { createMessage } = useMessage();
+
+  const formVisible = ref(false);
+  const currentRecord = ref<ProductCategoryItem | null>(null);
+  const modalKey = ref(0); // 添加key用于强制组件重新渲染
+  const { createMessage, createConfirm } = useMessage();
 
   const fetchCategoryList = async (params: Record<string, any> = {}) => {
-    const {
-      pageNo = 1,
-      pageSize = 10,
-      categoryName,
-      categoryCode,
-      manager,
-      status,
-      createdAtRange,
-    } = params;
-
-    let items = [...categoryStore.value];
-
-    if (categoryName) {
-      const keyword = toSafeLower(categoryName);
-      items = items.filter(
-        (item) =>
-          toSafeLower(item.categoryName).includes(keyword) ||
-          toSafeLower(item.alias).includes(keyword),
-      );
-    }
-
-    if (categoryCode) {
-      const keyword = toSafeLower(categoryCode);
-      items = items.filter((item) => toSafeLower(item.categoryCode).includes(keyword));
-    }
-
-    if (manager) {
-      const keyword = toSafeLower(manager);
-      items = items.filter((item) => toSafeLower(item.manager).includes(keyword));
-    }
-
-    if (status) {
-      items = items.filter((item) => item.status === status);
-    }
-
-    if (Array.isArray(createdAtRange) && createdAtRange.length === 2) {
-      const [startValue, endValue] = createdAtRange;
-      const start = dayjs(startValue);
-      const end = dayjs(endValue);
-      if (start.isValid() && end.isValid()) {
-        items = items.filter((item) => dayjs(item.createdAt).isBetween(start, end, null, '[]'));
+    try {
+      // 直接调用后端API获取数据
+      const result = await listProductCategory(params);
+      console.log('API返回的原始数据:', result);
+      
+      // 确保返回的数据格式符合BasicTable组件的要求
+      // JeecgBoot通常返回格式: {code: 200, data: {records: [...], total: ...}, message: 'success'}
+      if (result && result.data) {
+        return result.data;
       }
+      return result;
+    } catch (error) {
+      console.error('获取分类列表失败:', error);
+      // 返回空数据，避免表格显示错误
+      return { records: [], total: 0 };
     }
-
-    const total = items.length;
-    const currentPage = Number(pageNo) || 1;
-    const size = Number(pageSize) || 10;
-    const startIndex = (currentPage - 1) * size;
-    const records = items.slice(startIndex, startIndex + size);
-
-    return {
-      records,
-      total,
-    };
   };
 
-  const [registerTable, { reload }] = useTable({
+  const selectedRowKeys = ref<string[]>([]);
+  const rowSelection = ref({
+    selectedRowKeys: selectedRowKeys,
+    onChange: (keys: string[]) => {
+      selectedRowKeys.value = keys;
+    },
+  });
+
+  const [registerTable, { reload, getSelectRows }] = useTable({
     title: '商品分类列表',
     rowKey: 'id',
     api: fetchCategoryList,
@@ -141,10 +115,7 @@
       autoSubmitOnEnter: true,
       showAdvancedButton: true,
     },
-    actionColumn: {
-      width: 180,
-      title: '操作',
-    },
+    rowSelection: rowSelection.value,
     pagination: {
       pageSize: 10,
       pageSizeOptions: ['10', '20', '50'],
@@ -160,35 +131,108 @@
   }
 
   function handleCreate() {
-    createMessage.info('示例数据，新增功能请接入后端接口后再实现。');
+    // 先关闭弹窗
+    formVisible.value = false;
+    
+    // 增加key值强制组件重新创建
+    modalKey.value++;
+    
+    // 确保currentRecord完全清空
+    currentRecord.value = null;
+    
+    // 短暂延迟后打开弹窗
+    setTimeout(() => {
+      formVisible.value = true;
+    }, 100); // 稍微增加延迟时间，确保组件完全销毁和重建
   }
 
-  function handleView(record: ProductCategoryItem) {
-    detailRecord.value = { ...record };
-    detailVisible.value = true;
+  function handleEdit(record: ProductCategoryItem) {
+    // 先关闭弹窗
+    formVisible.value = false;
+    
+    // 增加key值强制组件重新创建
+    modalKey.value++;
+    
+    // 设置当前记录
+    currentRecord.value = { ...record };
+    
+    // 短暂延迟后打开弹窗
+    setTimeout(() => {
+      formVisible.value = true;
+    }, 100);
   }
 
-  function handleToggle(record: ProductCategoryItem) {
-    const target = categoryStore.value.find((item) => item.id === record.id);
-    if (!target) return;
-    target.status = target.status === 'enabled' ? 'disabled' : 'enabled';
-    target.updatedAt = dayjs().format('YYYY-MM-DD HH:mm:ss');
-    createMessage.success(
-      `已将分类「${target.categoryName}」${target.status === 'enabled' ? '启用' : '停用'}`,
-    );
-    reload();
+  function handleModalSuccess(values: any) {
+    // 先关闭弹窗
+    formVisible.value = false;
+    
+    // 增加key值强制组件重新创建
+    modalKey.value++;
+    
+    // 清空当前记录
+    currentRecord.value = null;
+    
+    if (values.id) {
+      // 调用后端API编辑数据
+      editProductCategory(values).then(() => {
+        createMessage.success('编辑分类成功');
+        reload();
+      });
+    } else {
+      // 调用后端API新增数据
+      addProductCategory(values).then(() => {
+        createMessage.success('新增分类成功');
+        reload();
+      });
+    }
+  }
+
+
+
+  function handleBatchDelete() {
+    const selectedRows = getSelectRows();
+    if (!selectedRows || selectedRows.length === 0) {
+      createMessage.warning('请先选择要删除的分类');
+      return;
+    }
+    
+    createConfirm({
+      title: '确认删除',
+      content: `确定要删除选中的${selectedRows.length}条商品分类吗？`,
+      async onOk() {
+        const ids = selectedRows.map(row => row.id);
+        // 调用后端API批量删除
+        await deleteBatchProductCategory(ids);
+        createMessage.success(`成功删除 ${selectedRows.length} 个分类`);
+        selectedRowKeys.value = [];
+        reload();
+      },
+    });
+  }
+
+  function handleDelete(record: ProductCategoryItem) {
+    createConfirm({
+      title: '确认删除',
+      content: `确定要删除分类「${record.categoryName}」吗？此操作不可恢复。`,
+      async onOk() {
+        // 调用后端API删除
+        await deleteProductCategory(record.id);
+        createMessage.success('删除分类成功');
+        reload();
+      },
+    });
   }
 
   function getTableActions(record: ProductCategoryItem) {
     return [
       {
-        label: '查看详情',
-        onClick: handleView.bind(null, record),
+        label: '修改',
+        onClick: handleEdit.bind(null, record),
       },
       {
-        label: record.status === 'enabled' ? '停用' : '启用',
-        color: record.status === 'enabled' ? 'warning' : 'success',
-        onClick: handleToggle.bind(null, record),
+        label: '删除',
+        color: 'danger',
+        onClick: handleDelete.bind(null, record),
       },
     ];
   }
@@ -201,9 +245,5 @@
     align-items: center;
     gap: 16px;
     margin-bottom: 12px;
-  }
-
-  .table-header .ant-alert {
-    flex: 1;
   }
 </style>
