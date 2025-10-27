@@ -28,7 +28,7 @@
               format="HH:mm"
               valueFormat="HH:mm"
               :allowClear="false"
-              :minute-step="5"
+              :minute-step="1"
               :placeholder="segmentIndexMap[column.key].placeholder"
             />
           </template>
