@@ -8,24 +8,7 @@
     @ok="handleOk"
     @cancel="handleCancel"
   >
-    <div v-if="cameraDetails.length" class="camera-details">
-      <a-descriptions :column="2" size="small" :bordered="true">
-        <a-descriptions-item
-          v-for="item in cameraDetails"
-          :key="item.label"
-          :label="item.label"
-        >
-          <template v-if="item.copyValue">
-            <span class="ellipsis-text" :title="item.copyValue">{{ item.value }}</span>
-            <a-button type="link" size="small" @click="handleCopy(item.copyValue)">复制</a-button>
-          </template>
-          <template v-else>
-            {{ item.value }}
-          </template>
-        </a-descriptions-item>
-      </a-descriptions>
-    </div>
-    <div class="video-player-container">
+  <div class="video-player-container">
       <div v-if="loading" class="loading-container">
         <a-spin size="large" />
         <p>正在准备视频流...</p>
@@ -52,6 +35,24 @@
         />
       </div>
     </div>
+    <div v-if="cameraDetails.length" class="camera-details">
+      <a-descriptions :column="2" size="small" :bordered="true">
+        <a-descriptions-item
+          v-for="item in cameraDetails"
+          :key="item.label"
+          :label="item.label"
+        >
+          <template v-if="item.copyValue">
+            <span class="ellipsis-text" :title="item.copyValue">{{ item.value }}</span>
+            <a-button type="link" size="small" @click="handleCopy(item.copyValue)">复制</a-button>
+          </template>
+          <template v-else>
+            {{ item.value }}
+          </template>
+        </a-descriptions-item>
+      </a-descriptions>
+    </div>
+    
   </BasicModal>
 </template>
 
