@@ -21,6 +21,12 @@ export const columns: BasicColumn[] = [
     customRender: render.renderAvatar,
   },
   {
+    title: '人脸抠图',
+    dataIndex: 'faceCutout',
+    width: 120,
+    customRender: render.renderAvatar,
+  },
+  {
     title: '性别',
     dataIndex: 'sex',
     width: 80,
@@ -296,10 +302,10 @@ export const formSchema: FormSchema[] = [
     label: '邮箱',
     field: 'email',
     component: 'Input',
-    required: true,
+    required: false,
     dynamicRules: ({ model, schema }) => {
       return [
-        { ...rules.duplicateCheckRule('sys_user', 'email', model, schema, true)[0], trigger: 'blur' },
+        { ...rules.duplicateCheckRule('sys_user', 'email', model, schema, false)[0], trigger: 'blur' },
         { ...rules.rule('email', false)[0], trigger: 'blur' },
       ];
     },
@@ -308,11 +314,19 @@ export const formSchema: FormSchema[] = [
     label: '手机号码',
     field: 'phone',
     component: 'Input',
-    required: true,
+    required: false,
     dynamicRules: ({ model, schema }) => {
       return [
-        { ...rules.duplicateCheckRule('sys_user', 'phone', model, schema, true)[0], trigger: 'blur' },
-        { pattern: /^1[3456789]\d{9}$/, message: '手机号码格式有误', trigger: 'blur' },
+        { ...rules.duplicateCheckRule('sys_user', 'phone', model, schema, false)[0], trigger: 'blur' },
+        {
+          validator: (_, value) => {
+            if (!value) return Promise.resolve();
+            return /^1[3456789]\d{9}$/.test(value)
+              ? Promise.resolve()
+              : Promise.reject('手机号码格式有误');
+          },
+          trigger: 'blur',
+        },
       ];
     },
   },

@@ -50,17 +50,17 @@
             <a-empty description="该权限组暂无人员" v-else />
           </a-card>
 
-          <a-card title="设备列表" class="group-card" :headStyle="cardHeadStyle">
+          <a-card title="门列表" class="group-card" :headStyle="cardHeadStyle">
             <template #extra>
               <a-space>
-                <a-button type="primary" :disabled="!selectedGroupId" @click="openDeviceSelect">添加设备</a-button>
-                <a-button danger :disabled="deviceSelectedRowKeys.length === 0 || !selectedGroupId" @click="removeSelectedDevices">移除所选</a-button>
+                <a-button type="primary" :disabled="!selectedGroupId" @click="openDoorSelect">添加门</a-button>
+                <a-button danger :disabled="deviceSelectedRowKeys.length === 0 || !selectedGroupId" @click="removeSelectedDoors">移除所选门</a-button>
               </a-space>
             </template>
             <template v-if="currentDevices.length">
               <BasicTable @register="handleRegisterDeviceTable" />
             </template>
-            <a-empty description="该权限组暂无设备" v-else />
+            <a-empty description="该权限组暂无门" v-else />
           </a-card>
         </template>
         <a-empty v-else description="请选择左侧权限组" class="group-empty" />
@@ -69,8 +69,8 @@
     <GroupForm @register="registerForm" @success="handleFormSuccess" />
     <!-- 用户选择弹窗 -->
     <UserSelectModal :multi="true" @register="registerUserSelectModal" @selected="onMemberSelected" />
-    <!-- 设备选择弹窗 -->
-    <BasicModal @register="registerDeviceSelectModal" :title="'选择设备'" width="900px" @ok="onDeviceSelectOk">
+    <!-- 门选择弹窗 -->
+    <BasicModal @register="registerDeviceSelectModal" :title="'选择门'" width="900px" @ok="onDoorSelectOk">
       <BasicTable
         @register="registerDeviceSelectTable"
         :rowSelection="deviceSelectRowSelection"
@@ -94,12 +94,12 @@
     groupColumns,
     groupSearchFormSchema,
     memberColumns,
-    deviceColumns,
     type AccGroupItem,
   } from './accgroup.data';
   import UserSelectModal from '/@/components/Form/src/jeecg/components/userSelect/UserSelectModal.vue';
-  import { createAsyncComponent } from '/@/utils/factory/createAsyncComponent';
-  import { listDevices as listAllDevices } from '/@/views/acc/devce.api';
+  import { columns as doorColumns, searchFormSchema as doorSearchFormSchema } from '/@/views/acc/accdoor/accdoor.data';
+  import { listDoor, /* new */ listDoorByGroup, getDoorDetail } from '/@/views/acc/accdoor/accdoor.api';
+  import { getAccDeviceBySn } from '/@/views/acc/devce.api';
 
   const { createMessage, createConfirm } = useMessage();
   const router = useRouter();
@@ -189,7 +189,7 @@
   });
 
   const [internalRegisterDeviceTable, { setTableData: setDeviceTableData }] = useTable({
-    columns: deviceColumns,
+    columns: doorColumns,
     dataSource: [],
     bordered: true,
     rowKey: 'id',
@@ -204,8 +204,9 @@
     rowSelection: {
       type: 'checkbox',
       preserveSelectedRowKeys: true,
-      onChange: (keys: (string | number)[]) => {
+      onChange: (keys: (string | number)[], rows: any[]) => {
         deviceSelectedRowKeys.value = (keys || []).map(String);
+        selectedDoorRowsForRemove.value = rows || [];
       },
     },
   });
@@ -265,7 +266,7 @@
 
   async function loadGroupDevices(groupId: string) {
     try {
-      const response = await listAccGroupDevices(groupId, 1, 100);
+      const response = await listDoorByGroup(groupId, 1, 100);
       currentDevices.value = response.records || [];
     } catch (e) {
       currentDevices.value = [];
@@ -325,12 +326,12 @@
     }
   }
 
-  // 选择设备并添加到当前组
+  // 选择门并添加到当前组
   const [registerDeviceSelectModal, deviceModal] = useModal();
   const [registerDeviceSelectTable, deviceSelectTable] = useTable({
-    title: '设备列表',
-    api: (params) => listAllDevices({ ...params }),
-    columns: deviceColumns,
+    title: '门列表',
+    api: (params) => listDoor({ ...params }),
+    columns: doorColumns,
     rowKey: 'id',
     bordered: true,
     useSearchForm: true,
@@ -339,6 +340,7 @@
       labelAlign: 'right',
       compact: true,
       showAdvancedButton: false,
+      schemas: doorSearchFormSchema,
     },
     pagination: {
       pageSize: 10,
@@ -347,41 +349,67 @@
   });
 
   const deviceSelectKeys = ref<string[]>([]);
+  const doorSelectRows = ref<any[]>([]);
   const deviceSelectRowSelection = {
     type: 'checkbox',
-    onChange: (keys: (string | number)[]) => {
+    onChange: (keys: (string | number)[], rows: any[]) => {
       deviceSelectKeys.value = (keys || []).map(String);
+      doorSelectRows.value = rows || [];
     },
   } as any;
 
-  function openDeviceSelect() {
+  function openDoorSelect() {
     if (!selectedGroupId.value) return;
     deviceModal.openModal(true);
   }
 
-  async function onDeviceSelectOk() {
+  async function onDoorSelectOk() {
     if (!selectedGroupId.value || deviceSelectKeys.value.length === 0) return;
     try {
-      await addDevicesToGroup(selectedGroupId.value, deviceSelectKeys.value);
-      createMessage.success('已添加所选设备');
+      // 将所选门映射为设备ID
+      const sns = (doorSelectRows.value || []).map((r: any) => String(r.deviceSn || '')).filter(Boolean);
+      const deviceIds: string[] = [];
+      for (const sn of sns) {
+        const dev = await getAccDeviceBySn({ sn });
+        if (dev?.id) deviceIds.push(String(dev.id));
+      }
+      if (deviceIds.length === 0) {
+        createMessage.warning('未找到对应设备，请检查门的设备序列号');
+        return;
+      }
+      await addDevicesToGroup(selectedGroupId.value, deviceIds);
+      createMessage.success('已添加所选门');
       deviceSelectKeys.value = [];
+      doorSelectRows.value = [];
       await loadGroupDevices(selectedGroupId.value);
-      // 关闭设备选择弹窗
       deviceModal.closeModal();
     } catch (e: any) {
-      createMessage.error(e?.message || '添加设备失败');
+      createMessage.error(e?.message || '添加门失败');
     }
   }
 
-  async function removeSelectedDevices() {
+  const selectedDoorRowsForRemove = ref<any[]>([]);
+  async function removeSelectedDoors() {
     if (!selectedGroupId.value || deviceSelectedRowKeys.value.length === 0) return;
     try {
-      await removeDevicesFromGroup(selectedGroupId.value, deviceSelectedRowKeys.value);
-      createMessage.success('已移除所选设备');
+      // 将所选门映射为设备ID
+      const sns = (selectedDoorRowsForRemove.value || []).map((r: any) => String(r.deviceSn || '')).filter(Boolean);
+      const deviceIds: string[] = [];
+      for (const sn of sns) {
+        const dev = await getAccDeviceBySn({ sn });
+        if (dev?.id) deviceIds.push(String(dev.id));
+      }
+      if (deviceIds.length === 0) {
+        createMessage.warning('未找到对应设备，请检查门的设备序列号');
+        return;
+      }
+      await removeDevicesFromGroup(selectedGroupId.value, deviceIds);
+      createMessage.success('已移除所选门');
       deviceSelectedRowKeys.value = [];
+      selectedDoorRowsForRemove.value = [];
       await loadGroupDevices(selectedGroupId.value);
     } catch (e: any) {
-      createMessage.error(e?.message || '移除设备失败');
+      createMessage.error(e?.message || '移除门失败');
     }
   }
 
@@ -423,16 +451,49 @@
 
   function handleFormSuccess(payload: { record: AccGroupItem; isUpdate: boolean; detail?: Record<string, any> }) {
     const { record, isUpdate, detail } = payload;
-    const vo = {
-      id: isUpdate ? record.id : undefined,
-      groupName: record.groupName,
-      periodId: record.periodId,
-      remark: record.remark,
-      members: detail?.members?.map((m: any) => m.id) ?? record.members ?? [],
-      devices: detail?.devices?.map((d: any) => d.id) ?? record.devices ?? [],
-    };
     (async () => {
       try {
+        // 将所选“门”转换为设备ID，以匹配后端 acc_group_device 表的 device_id
+        let deviceIds: string[] = [];
+        if (detail?.devices && Array.isArray(detail.devices) && detail.devices.length > 0) {
+          const candidates = detail.devices as any[];
+          const ids: string[] = [];
+          for (const d of candidates) {
+            const sn = String(d?.deviceSn || '');
+            if (sn) {
+              const dev = await getAccDeviceBySn({ sn });
+              if (dev?.id) ids.push(String(dev.id));
+            } else if (d?.id) {
+              // 回退：缺少 deviceSn 时，根据门ID查询详情再映射
+              try {
+                const det = await getDoorDetail({ id: d.id });
+                const door = det?.result ?? det;
+                const sn2 = String(door?.deviceSn || '');
+                if (sn2) {
+                  const dev2 = await getAccDeviceBySn({ sn: sn2 });
+                  if (dev2?.id) ids.push(String(dev2.id));
+                }
+              } catch (_) {
+                // ignore
+              }
+            }
+          }
+          // 去重
+          deviceIds = Array.from(new Set(ids));
+        } else {
+          // 无门详情时，沿用 record.devices（可能是设备ID列表，编辑场景）
+          deviceIds = record.devices ?? [];
+        }
+
+        const vo = {
+          id: isUpdate ? record.id : undefined,
+          groupName: record.groupName,
+          periodId: record.periodId,
+          remark: record.remark,
+          members: detail?.members?.map((m: any) => m.id) ?? record.members ?? [],
+          devices: deviceIds,
+        };
+
         const resp = isUpdate ? await editAccGroup(vo) : await addAccGroup(vo);
         createMessage.success(isUpdate ? '权限组信息已更新' : '已创建新的权限组');
         await reloadGroupTable();

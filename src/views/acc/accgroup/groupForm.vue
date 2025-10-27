@@ -38,28 +38,28 @@
         </a-col>
         <a-col :span="12">
           <div class="overview-title">
-            <span class="overview-label">已选择设备</span>
-            <a-badge :count="selectedDeviceRows.length" show-zero />
-            <a-button type="link" size="small" @click="clearDevices" v-if="selectedDeviceRows.length">清空</a-button>
+            <span class="overview-label">已选择门</span>
+            <a-badge :count="selectedDoorRows.length" show-zero />
+            <a-button type="link" size="small" @click="clearDoors" v-if="selectedDoorRows.length">清空</a-button>
           </div>
-          <template v-if="selectedDeviceRows.length">
-            <a-list :data-source="devicePreview" :split="false" class="overview-list">
+          <template v-if="selectedDoorRows.length">
+            <a-list :data-source="doorPreview" :split="false" class="overview-list">
               <template #renderItem="{ item }">
                 <a-list-item>
                   <a-space :size="8">
-                    <a-avatar :size="28" shape="square">{{ item.deviceName.slice(0, 2) }}</a-avatar>
+                    <a-avatar :size="28" shape="square">{{ (item.doorName || item.deviceName || '').slice(0, 2) }}</a-avatar>
                     <div class="item-meta">
-                      <div class="item-name">{{ item.deviceName }}</div>
-                      <div class="item-desc">{{ item.location }} ｜ 序列号 {{ item.sn }}</div>
+                      <div class="item-name">{{ item.deviceName }} ｜ {{ item.doorName }}</div>
+                      <div class="item-desc">序列号 {{ item.deviceSn }}</div>
                     </div>
-                    <a-button type="link" size="small" @click="removeDevice(item.id)">移除</a-button>
+                    <a-button type="link" size="small" @click="removeDoor(item.id)">移除</a-button>
                   </a-space>
                 </a-list-item>
               </template>
             </a-list>
-            <div class="more-hint" v-if="deviceMoreCount">还有 {{ deviceMoreCount }} 台...</div>
+            <div class="more-hint" v-if="doorMoreCount">还有 {{ doorMoreCount }} 个...</div>
           </template>
-          <a-empty description="暂无已选设备" v-else />
+          <a-empty description="暂无已选门" v-else />
         </a-col>
       </a-row>
     </a-card>
@@ -72,13 +72,10 @@
           </template>
         </BasicTable>
       </a-tab-pane>
-      <a-tab-pane key="device" tab="设备授权">
-        <BasicTable @register="registerDeviceTable" size="small">
+      <a-tab-pane key="door" tab="门授权">
+        <BasicTable @register="registerDoorTable" size="small">
           <template #tableTitle>
-            <a-alert type="info" show-icon message="支持按设备名称、序列号或安装位置快速定位" />
-          </template>
-          <template #authorized="{ text }">
-            <a-tag :color="text === '已授权' ? 'success' : 'orange'">{{ text }}</a-tag>
+            <a-alert type="info" show-icon message="支持按设备名称、门名称或IP地址快速定位" />
           </template>
         </BasicTable>
       </a-tab-pane>
@@ -94,23 +91,28 @@
   import { listTimePeriods } from '../timeperiod/timeperiod.api';
   import {
     memberColumns,
-    deviceColumns,
     memberSearchFormSchema,
-    deviceSearchFormSchema,
     fetchAccMemberList,
-    fetchAccDeviceList,
     type AccMemberItem,
-    type AccDeviceItem,
     type AccGroupItem,
   } from './accgroup.data';
+  import { columns as doorColumns, searchFormSchema as doorSearchFormSchema } from '../accdoor/accdoor.data';
+  import { listDoor } from '../accdoor/accdoor.api';
   import { dateUtil } from '/@/utils/dateUtil';
 
   type MemberItem = AccMemberItem;
-  type DeviceItem = AccDeviceItem;
+  interface DoorItem {
+    id: string;
+    deviceName?: string;
+    doorName?: string;
+    deviceSn?: string;
+    ipAddress?: string;
+    authorized?: string;
+  }
 
   interface GroupDetailPayload {
     members: MemberItem[];
-    devices: DeviceItem[];
+    devices: DoorItem[];
   }
 
   interface GroupFormEmit {
@@ -129,14 +131,14 @@
   const isUpdate = ref(false);
   const currentRecord = ref<AccGroupItem | null>(null);
   const selectedMemberRows = ref<MemberItem[]>([]);
-  const selectedDeviceRows = ref<DeviceItem[]>([]);
+  const selectedDoorRows = ref<DoorItem[]>([]);
   const selectedMemberKeys = ref<string[]>([]);
-  const selectedDeviceKeys = ref<string[]>([]);
+  const selectedDoorKeys = ref<string[]>([]);
 
   const memberPreview = computed(() => selectedMemberRows.value.slice(0, 5));
-  const devicePreview = computed(() => selectedDeviceRows.value.slice(0, 5));
+  const doorPreview = computed(() => selectedDoorRows.value.slice(0, 5));
   const memberMoreCount = computed(() => Math.max(0, selectedMemberRows.value.length - memberPreview.value.length));
-  const deviceMoreCount = computed(() => Math.max(0, selectedDeviceRows.value.length - devicePreview.value.length));
+  const doorMoreCount = computed(() => Math.max(0, selectedDoorRows.value.length - doorPreview.value.length));
 
   const periodName = ref<string>('');
 
@@ -232,9 +234,9 @@
     },
   });
 
-  const [registerDeviceTable, { reload: reloadDeviceTable, setSelectedRowKeys: setDeviceRowKeys }] = useTable({
-    api: fetchDeviceList,
-    columns: deviceColumns,
+  const [registerDoorTable, { reload: reloadDoorTable, setSelectedRowKeys: setDoorRowKeys }] = useTable({
+    api: fetchDoorList,
+    columns: doorColumns,
     rowKey: 'id',
     bordered: true,
     useSearchForm: true,
@@ -243,7 +245,7 @@
       labelAlign: 'right',
       compact: true,
       rowProps: { gutter: 16 },
-      schemas: deviceSearchFormSchema,
+      schemas: doorSearchFormSchema,
       autoSubmitOnEnter: true,
       showAdvancedButton: true,
       actionColOptions: { span: 24 },
@@ -258,8 +260,8 @@
     rowSelection: {
       type: 'checkbox',
       preserveSelectedRowKeys: true,
-      onChange: (keys: (string | number)[], rows: DeviceItem[]) => {
-        handleDeviceSelect(keys.map(String), rows);
+      onChange: (keys: (string | number)[], rows: DoorItem[]) => {
+        handleDoorSelect(keys.map(String), rows);
       },
     },
   });
@@ -274,10 +276,10 @@
     periodName.value = record?.periodName ?? '';
 
     selectedMemberKeys.value = record?.members ? [...record.members] : [];
-    selectedDeviceKeys.value = record?.devices ? [...record.devices] : [];
+    selectedDoorKeys.value = record?.devices ? [...record.devices] : [];
     // 预加载编辑态已选项详情，用于右侧预览
     await preloadSelectedMembers();
-    await preloadSelectedDevices();
+    await preloadSelectedDoors();
 
     await setFieldsValue({
       groupName: record?.groupName ?? '',
@@ -285,10 +287,10 @@
       remark: record?.remark ?? '',
     });
 
-    await Promise.all([reloadMemberTable({ page: 1 }), reloadDeviceTable({ page: 1 })]);
+    await Promise.all([reloadMemberTable({ page: 1 }), reloadDoorTable({ page: 1 })]);
     await nextTick();
     setMemberRowKeys?.(selectedMemberKeys.value);
-    setDeviceRowKeys?.(selectedDeviceKeys.value);
+    setDoorRowKeys?.(selectedDoorKeys.value);
     setModalProps({ confirmLoading: false });
   });
 
@@ -296,8 +298,8 @@
     return await fetchAccMemberList(params);
   }
 
-  async function fetchDeviceList(params: Record<string, any>) {
-    return await fetchAccDeviceList(params);
+  async function fetchDoorList(params: Record<string, any>) {
+    return await listDoor(params);
   }
 
   async function preloadSelectedMembers() {
@@ -312,15 +314,15 @@
     selectedMemberRows.value = rows;
   }
 
-  async function preloadSelectedDevices() {
-    const ids = selectedDeviceKeys.value;
+  async function preloadSelectedDoors() {
+    const ids = selectedDoorKeys.value;
     if (!ids?.length) {
-      selectedDeviceRows.value = [];
+      selectedDoorRows.value = [];
       return;
     }
-    const res = await fetchAccDeviceList({ pageNo: 1, pageSize: Math.max(ids.length, 10), ids: ids.join(',') });
-    const rows = (res.records || []).filter((r) => ids.includes(r.id));
-    selectedDeviceRows.value = rows;
+    const res = await listDoor({ pageNo: 1, pageSize: Math.max(ids.length, 10), ids: ids.join(',') });
+    const rows = (res.records || []).filter((r: any) => ids.includes(r.id));
+    selectedDoorRows.value = rows as DoorItem[];
   }
 
   function handleMemberSelect(keys: string[], rows?: MemberItem[]) {
@@ -335,14 +337,14 @@
     }
   }
 
-  function handleDeviceSelect(keys: string[], rows?: DeviceItem[]) {
-    selectedDeviceKeys.value = keys;
+  function handleDoorSelect(keys: string[], rows?: DoorItem[]) {
+    selectedDoorKeys.value = keys;
     if (rows && rows.length) {
-      selectedDeviceRows.value = rows;
+      selectedDoorRows.value = rows;
     } else {
-      const map = new Map<string, DeviceItem>();
-      selectedDeviceRows.value.forEach((r) => map.set(r.id, r));
-      selectedDeviceRows.value = keys.map((id) => map.get(id)).filter(Boolean) as DeviceItem[];
+      const map = new Map<string, DoorItem>();
+      selectedDoorRows.value.forEach((r) => map.set(r.id, r));
+      selectedDoorRows.value = keys.map((id) => map.get(id)).filter(Boolean) as DoorItem[];
     }
   }
 
@@ -352,10 +354,10 @@
     setMemberRowKeys?.([]);
   }
 
-  function clearDevices() {
-    selectedDeviceKeys.value = [];
-    selectedDeviceRows.value = [];
-    setDeviceRowKeys?.([]);
+  function clearDoors() {
+    selectedDoorKeys.value = [];
+    selectedDoorRows.value = [];
+    setDoorRowKeys?.([]);
   }
 
   function removeMember(id: string) {
@@ -364,10 +366,10 @@
     setMemberRowKeys?.(selectedMemberKeys.value);
   }
 
-  function removeDevice(id: string) {
-    selectedDeviceKeys.value = selectedDeviceKeys.value.filter((key) => key !== id);
-    selectedDeviceRows.value = selectedDeviceRows.value.filter((item) => item.id !== id);
-    setDeviceRowKeys?.(selectedDeviceKeys.value);
+  function removeDoor(id: string) {
+    selectedDoorKeys.value = selectedDoorKeys.value.filter((key) => key !== id);
+    selectedDoorRows.value = selectedDoorRows.value.filter((item) => item.id !== id);
+    setDoorRowKeys?.(selectedDoorKeys.value);
   }
 
   // periodId 对应的展示名称 periodName 已在下拉选择时记录
@@ -375,7 +377,7 @@
   async function handleSubmit() {
     const values = await validate();
     const members = selectedMemberRows.value ?? [];
-    const devices = selectedDeviceRows.value ?? [];
+    const doors = selectedDoorRows.value ?? [];
 
     const recordId = isUpdate.value && currentRecord.value ? currentRecord.value.id : `g-${Date.now()}`;
     const createTime = isUpdate.value && currentRecord.value ? currentRecord.value.createTime : dateUtil().format('YYYY-MM-DD HH:mm:ss');
@@ -386,11 +388,11 @@
       periodId: values.periodId,
       periodName: periodName.value,
       memberCount: members.length,
-      deviceCount: devices.length,
+      deviceCount: doors.length,
       createTime,
       remark: values.remark,
       members: members.map((item) => item.id),
-      devices: devices.map((item) => item.id),
+      devices: doors.map((item) => item.id),
     };
 
     emit('success', {
@@ -398,7 +400,7 @@
       isUpdate: isUpdate.value,
       detail: {
         members,
-        devices,
+        devices: doors,
       },
     });
 

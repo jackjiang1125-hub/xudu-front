@@ -3,6 +3,7 @@ import { Modal } from 'ant-design-vue';
 
 enum Api {
   list = '/acc/door/list',
+  listByGroup = '/acc/door/listByGroup',
   detail = '/acc/door/detail',
   add = '/acc/door/add',
   edit = '/acc/door/edit',
@@ -14,6 +15,13 @@ enum Api {
  */
 export const listDoor = (params) => {
   return defHttp.get({ url: Api.list, params });
+};
+
+/**
+ * 按权限组查询门列表
+ */
+export const listDoorByGroup = (groupId: string, pageNo = 1, pageSize = 10) => {
+  return defHttp.get({ url: Api.listByGroup, params: { groupId, pageNo, pageSize } });
 };
 
 /**
