@@ -2,23 +2,20 @@
   <div>
     <BasicTable
       @register="registerTable"
-      :columns="columns"
-      :api="listVideos"
-      :formConfig="{ schemas: searchFormSchema }"
       :rowSelection="rowSelection"
     >
       <template #tableTitle>
-        <a-button type="primary" @click="handleAdd">新增视频流</a-button>
+        <a-button type="primary" @click="handleAdd">Add Video</a-button>
         <a-button
           type="primary"
           danger
           :disabled="!hasSelected"
           @click="handleBatchDelete"
         >
-          批量删除
+          Delete Selected
         </a-button>
-        <a-button type="default" @click="handleExport">导出视频流</a-button>
-        <a-button type="default" @click="handleImport">导入视频流</a-button>
+        <a-button type="default" @click="handleExport">Export</a-button>
+        <a-button type="default" @click="handleImport">Import</a-button>
       </template>
       <template #action="{ record }">
         <a-space>
@@ -31,6 +28,7 @@
 
     <VideoForm @register="registerForm" @success="handleSuccess" />
     <VideoPlayer @register="registerPlayer" />
+    <NvrPlayer @register="registerNvrPlayer" />
   </div>
 </template>
 
@@ -45,10 +43,37 @@ import { listVideos, deleteVideo, deleteBatchVideos, exportVideos, importVideos 
 import { initDictOptions } from '/@/utils/dict/index';
 import VideoForm from './VideoForm.vue';
 import VideoPlayer from './VideoPlayer.vue';
+import NvrPlayer from './NvrPlayer.vue';
 
 const { createMessage } = useMessage();
 
 type DictKey = 'manufacturer' | 'model' | 'type';
+
+interface VideoRecord {
+  id?: string;
+  name?: string;
+  type?: string;
+  app?: string;
+  stream?: string;
+  ip?: string;
+  deviceIp?: string;
+  port?: string;
+  webrtcUrl?: string;
+  webRtcUrl?: string;
+  webrtcApi?: string;
+  children?: VideoRecord[];
+  parentId?: string;
+  __isChild?: boolean;
+  manufacturer?: string;
+  manufacturer_dictText?: string;
+  manufacturerText?: string;
+  model?: string;
+  model_dictText?: string;
+  modelText?: string;
+  type_dictText?: string;
+  typeText?: string;
+  [key: string]: any;
+}
 
 const dictCodeMap: Record<DictKey, string> = {
   manufacturer: 'xudu_manufacturer',
@@ -107,35 +132,92 @@ const getDictText = (key: DictKey, value: unknown, dictText?: string): string =>
   return mapped !== undefined && mapped !== null && mapped !== '' ? mapped : String(value);
 };
 
+const normalizeVideoNode = (item: VideoRecord, parent?: VideoRecord): VideoRecord => {
+  const typeValue = String(item?.type ?? '').trim().toLowerCase();
+
+  const normalized: VideoRecord = {
+    ...item,
+    manufacturerText: getDictText('manufacturer', item.manufacturer, item.manufacturer_dictText),
+    modelText: getDictText('model', item.model, item.model_dictText),
+    typeText: getDictText('type', item.type, item.type_dictText),
+  };
+
+  if (parent?.id && !normalized.parentId) {
+    normalized.parentId = parent.id;
+  }
+
+  if (parent) {
+    normalized.__isChild = true;
+  } else {
+    delete normalized.__isChild;
+  }
+
+  const rawChildren = Array.isArray(item?.children) ? (item.children as VideoRecord[]) : [];
+  if (rawChildren.length > 0) {
+    normalized.children = rawChildren.map((child) => normalizeVideoNode(child, normalized));
+  } else {
+    delete normalized.children;
+  }
+
+  if (typeValue === 'nvr' || typeValue === 'ipc') {
+    normalized.type = typeValue;
+  }
+
+  return normalized;
+};
 
 const handleAfterFetch = async (items: Record<string, any>[]) => {
   await loadDicts();
   if (!Array.isArray(items)) {
     return [];
   }
-  return items.map((item) => ({
-    ...item,
-    manufacturerText: getDictText('manufacturer', item.manufacturer, item.manufacturer_dictText),
-    modelText: getDictText('model', item.model, item.model_dictText),
-    typeText: getDictText('type', item.type, item.type_dictText),
-  }));
+  return items.map((item) => normalizeVideoNode(item as VideoRecord));
 };
+
+function getRowClassName(row: VideoRecord & { record?: VideoRecord }) {
+  const current = (row?.record ?? row) as VideoRecord;
+  const typeValue = String(current?.type ?? '').toLowerCase();
+  const classes: string[] = [];
+
+  if (typeValue === 'nvr') {
+    classes.push('video-nvr-row');
+  }
+  if (typeValue === 'ipc') {
+    classes.push('video-ipc-row');
+  }
+  if (current?.__isChild || (current?.parentId && typeValue !== 'nvr')) {
+    classes.push('video-child-row');
+  }
+
+  return classes.join(' ');
+}
 
 onMounted(() => {
   loadDicts();
 });
 
 const [registerTable, { reload, getSelectRows }] = useTable({
+  api: listVideos,
+  columns,
+  formConfig: {
+    schemas: searchFormSchema,
+  },
+  rowKey: 'id',
+  isTreeTable: true,
+  childrenColumnName: 'children',
+  rowClassName: getRowClassName,
   afterFetch: handleAfterFetch,
 });
 const [registerForm, { openModal }] = useModal();
 const [registerPlayer, { openModal: openPlayerModal }] = useModal();
+const [registerNvrPlayer, { openModal: openNvrModal }] = useModal();
 
 const rowSelection = {
   type: 'checkbox' as const,
+  checkStrictly: true,
   onChange: (selectedRowKeys: string[], selectedRows: any[]) => {
-    console.log('selectedRowKeys changed:', selectedRowKeys);
-    console.log('selectedRows:', selectedRows);
+    console.log('Selected keys:', selectedRowKeys);
+    console.log('Selected rows:', selectedRows);
   },
 };
 
@@ -165,22 +247,28 @@ const handleView = (record: any) => {
   });
 };
 
-const handlePlay = (record: any) => {
-  console.log('点击播放按钮，记录信息', record);
+const handlePlay = (record: VideoRecord) => {
+  const typeValue = String(record?.type ?? '').toLowerCase();
+  if (typeValue === 'xudu_video_nvr') {
+    openNvrModal(true, { record });
+    return;
+  }
   openPlayerModal(true, { record });
 };
 
-const handleDelete = (record: any) => {
+const handleDelete = (record: VideoRecord) => {
   Modal.confirm({
-    title: '确认删除',
-    content: '确定要删除该视频流吗？',
+    title: 'Confirm Delete',
+    content: 'Remove this video record?',
     onOk() {
-      deleteVideo(record.id)
+      return deleteVideo(record.id)
         .then(() => {
+          createMessage.success('Video deleted');
           reload();
         })
         .catch((error) => {
-          createMessage.error('删除失败：' + error.message);
+          createMessage.error(`Delete failed: ${error?.message || error}`);
+          return Promise.reject(error);
         });
     },
   });
@@ -189,22 +277,23 @@ const handleDelete = (record: any) => {
 const handleBatchDelete = () => {
   const selectedRows = getSelectRows();
   if (!selectedRows || selectedRows.length === 0) {
-    createMessage.warning('请选择要删除的视频流');
+    createMessage.warning('Select at least one video to delete.');
     return;
   }
 
   Modal.confirm({
-    title: '确认批量删除',
-    content: `确定要删除选中的 ${selectedRows.length} 个视频流吗？`,
+    title: 'Confirm Bulk Delete',
+    content: `Remove ${selectedRows.length} selected video record(s)?`,
     onOk() {
       const ids = selectedRows.map((row) => row.id);
-      deleteBatchVideos(ids)
+      return deleteBatchVideos(ids)
         .then(() => {
-          createMessage.success('批量删除成功');
+          createMessage.success('Selected videos deleted');
           reload();
         })
         .catch((error) => {
-          createMessage.error('批量删除失败：' + error.message);
+          createMessage.error(`Bulk delete failed: ${error?.message || error}`);
+          return Promise.reject(error);
         });
     },
   });
@@ -213,10 +302,10 @@ const handleBatchDelete = () => {
 const handleExport = () => {
   exportVideos()
     .then(() => {
-      createMessage.success('导出成功');
+      createMessage.success('Export started');
     })
     .catch((error) => {
-      createMessage.error('导出失败：' + error.message);
+      createMessage.error(`Export failed: ${error?.message || error}`);
     });
 };
 
@@ -229,11 +318,11 @@ const handleImport = () => {
     if (file) {
       importVideos(file)
         .then(() => {
-          createMessage.success('导入成功');
+          createMessage.success('Import succeeded');
           reload();
         })
         .catch((error) => {
-          createMessage.error('导入失败：' + error.message);
+          createMessage.error(`Import failed: ${error?.message || error}`);
         });
     }
   };
@@ -244,3 +333,84 @@ const handleSuccess = () => {
   reload();
 };
 </script>
+
+<style scoped>
+  :deep(.video-nvr-row td) {
+    background-color: #f0f5ff;
+    font-weight: 600;
+  }
+
+  :deep(.video-nvr-row td:first-child) {
+    border-left: 3px solid #2f54eb;
+  }
+
+  :deep(.video-ipc-row td) {
+    background-color: #fafafa;
+  }
+
+  :deep(.video-ipc-row td:first-child) {
+    border-left: 3px solid #52c41a;
+  }
+
+  :deep(.video-child-row > td) {
+    background-color: #f7f9ff;
+  }
+
+  :deep(.video-type-tag) {
+    font-weight: 600;
+    color: #fff;
+  }
+
+  :deep(.video-type-tag.video-type-nvr) {
+    background-color: #2f54eb;
+    border-color: #2f54eb;
+  }
+
+  :deep(.video-type-tag.video-type-ipc) {
+    background-color: #389e0d;
+    border-color: #389e0d;
+  }
+
+  :deep(.video-name-cell) {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  :deep(.video-name-text) {
+    font-size: 14px;
+    color: #303133;
+  }
+
+  :deep(.video-name-badge) {
+    display: inline-flex;
+    align-items: center;
+    height: 20px;
+    padding: 0 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    line-height: 20px;
+    background-color: #f0f2f5;
+    color: #606266;
+  }
+
+  :deep(.video-name-badge-nvr) {
+    background-color: #e8f3ff;
+    color: #1677ff;
+    font-weight: 600;
+  }
+
+  :deep(.video-name-badge-ipc),
+  :deep(.video-name-badge-child) {
+    background-color: #f6ffed;
+    color: #389e0d;
+  }
+
+  :deep(.video-name-badge-nvr ~ .video-name-text) {
+    font-weight: 600;
+  }
+
+  :deep(.video-child-row .video-name-text) {
+    font-weight: 500;
+  }
+</style>

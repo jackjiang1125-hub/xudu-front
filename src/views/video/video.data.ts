@@ -1,13 +1,40 @@
 import { BasicColumn, FormSchema } from '/@/components/Table';
+import { Tag } from 'ant-design-vue';
 import { render } from '/@/utils/common/renderUtils';
 import { h } from 'vue';
 
 export const columns: BasicColumn[] = [
   {
-    title: '视频流名称',
+    title: 'Device Name',
     dataIndex: 'name',
-    width: 150,
+    width: 250,
     fixed: 'left',
+    customRender: ({ text, record }) => {
+      const item = record as any;
+      const name = text || '-';
+      const type = String(item?.typeText || item?.type || '').trim().toUpperCase();
+      const isChild = Boolean(item?.__isChild) || (Boolean(item?.parentId) && type !== 'NVR');
+      const badgeClass = ['video-name-badge'];
+      let badgeText = '';
+      if (type === 'NVR') {
+        badgeClass.push('video-name-badge-nvr');
+        badgeText = 'NVR';
+      } else if (isChild) {
+        if (type === 'IPC') {
+          badgeClass.push('video-name-badge-ipc');
+          badgeText = 'IPC';
+        } else {
+          badgeClass.push('video-name-badge-child');
+          badgeText = type || 'Child';
+        }
+      }
+      const children: any[] = [];
+      if (badgeText) {
+        children.push(h('span', { class: badgeClass.join(' ') }, badgeText));
+      }
+      children.push(h('span', { class: 'video-name-text' }, name));
+      return h('span', { class: 'video-name-cell' }, children);
+    },
   },
   {
     title: '设备IP',
@@ -44,32 +71,38 @@ export const columns: BasicColumn[] = [
     },
   },
   {
-    title: '监控类型',
+    title: 'Type',
     dataIndex: 'type',
-    width: 100,
-    customRender: ({ text, record }) => {
-      const display = record?.typeText || record?.type_dictText;
-      if (display) {
-        return h('span', display);
-      }
-      return render.renderDict(text, 'xudu_video_type');
-    },
-  },
-  {
-    title: '在线状态',
-    dataIndex: 'status',
-    width: 100,
-    customRender: ({ text }) => {
-      const statusMap = {
-        'online': { text: '在线', color: '#52c41a' },
-        'offline': { text: '离线', color: '#ff4d4f' },
-        '1': { text: '在线', color: '#52c41a' },
-        '0': { text: '离线', color: '#ff4d4f' },
-        true: { text: '在线', color: '#52c41a' },
-        false: { text: '离线', color: '#ff4d4f' }
+    width: 120,
+    customRender: ({ record }) => {
+      const typeValue = String(record?.type ?? '').trim().toLowerCase();
+      const display = record?.typeText || record?.type_dictText || record?.type || '-';
+      const fallbackText = String(display || '-');
+      const fallbackKey = fallbackText.trim().toLowerCase();
+      const typeMeta: Record<string, { color: string; label: string; className: string }> = {
+        nvr: { color: '#2f54eb', label: 'NVR', className: 'video-type-nvr' },
+        ipc: { color: '#389e0d', label: 'IPC', className: 'video-type-ipc' },
       };
-      const statusInfo = statusMap[text] || { text: text, color: '#666' };
-      return h('span', { style: { color: statusInfo.color, fontWeight: 'bold' } }, statusInfo.text);
+      const meta = typeMeta[typeValue] || typeMeta[fallbackKey];
+      const tagText = meta ? meta.label : fallbackText;
+      const classNames = ['video-type-tag'];
+      if (meta?.className) classNames.push(meta.className);
+      return h(
+        Tag,
+        {
+          color: meta?.color,
+          style: meta
+            ? {
+                backgroundColor: meta.color,
+                borderColor: meta.color,
+                color: '#fff',
+              }
+            : undefined,
+          bordered: false,
+          class: classNames,
+        },
+        () => tagText
+      );
     },
   },
   {
