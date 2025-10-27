@@ -112,6 +112,7 @@ export const formSchema: FormSchema[] = [
     field: 'restaurantCode',
     label: '餐厅编码',
     component: 'JInput',
+    required: true,
     colProps: { span: 12 },
     componentProps: {
       placeholder: '请输入餐厅编码',
@@ -128,6 +129,7 @@ export const formSchema: FormSchema[] = [
     field: 'restaurantName',
     label: '餐厅名称',
     component: 'JInput',
+    required: true,
     colProps: { span: 12 },
     componentProps: {
       placeholder: '请输入餐厅名称',
