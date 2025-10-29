@@ -67,8 +67,8 @@
       </a-col>
     </a-row>
     <GroupForm @register="registerForm" @success="handleFormSuccess" />
-    <!-- 用户选择弹窗 -->
-    <UserSelectModal :multi="true" @register="registerUserSelectModal" @selected="onMemberSelected" />
+    <!-- 用户选择弹窗（仅业务用户） -->
+    <UserSelectModalBiz :multi="true" @register="registerUserSelectModal" @selected="onMemberSelected" />
     <!-- 门选择弹窗 -->
     <BasicModal @register="registerDeviceSelectModal" :title="'选择门'" width="900px" @ok="onDoorSelectOk">
       <BasicTable
@@ -96,7 +96,7 @@
     memberColumns,
     type AccGroupItem,
   } from './accgroup.data';
-  import UserSelectModal from '/@/components/Form/src/jeecg/components/userSelect/UserSelectModal.vue';
+  import UserSelectModalBiz from '/@/components/Form/src/jeecg/components/userSelect/UserSelectModalBiz.vue';
   import { columns as doorColumns, searchFormSchema as doorSearchFormSchema } from '/@/views/acc/accdoor/accdoor.data';
   import { listDoor, /* new */ listDoorByGroup, getDoorDetail } from '/@/views/acc/accdoor/accdoor.api';
   import { getAccDeviceBySn } from '/@/views/acc/devce.api';
@@ -258,7 +258,24 @@
   async function loadGroupMembers(groupId: string) {
     try {
       const response = await listAccGroupMembers(groupId, 1, 100);
-      currentMembers.value = response.records || [];
+      const raw = response?.records || [];
+      // 统一映射为 AccMemberItem 结构，确保列（workNo/name/dept）正常显示
+      currentMembers.value = raw.map((r: any) => ({
+        id: String(r.id ?? r.memberId ?? r.userId ?? ''),
+        workNo: String(
+          r.workNo ??
+          r.memberCode ??
+          r.userCode ??
+          r.employeeNo ??
+          r.employeeId ??
+          r.jobNo ??
+          r.work_code ??
+          r.work_no ??
+          ''
+        ),
+        name: String(r.name ?? r.memberName ?? r.realname ?? r.username ?? ''),
+        dept: String(r.dept ?? r.department ?? r.orgCodeTxt ?? r.departName ?? ''),
+      }));
     } catch (e) {
       currentMembers.value = [];
     }

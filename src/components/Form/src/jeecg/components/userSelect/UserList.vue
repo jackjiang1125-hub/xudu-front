@@ -20,6 +20,7 @@
           </div>
           <div :style="nameStyle">
             {{ item.realname }}
+            <span v-if="workNoOf(item)" style="margin-left: 6px; color: #888;">（工号 {{ workNoOf(item) }}）</span>
           </div>
           <div :style="departStyle" class="ellipsis" :title="item.orgCodeTxt">
             {{ item.orgCodeTxt }}
@@ -137,6 +138,19 @@
         e.preventDefault();
         e.stopPropagation();
       }
+      function workNoOf(u:any){
+        return (
+          u?.workNo ||
+          u?.memberCode ||
+          u?.userCode ||
+          u?.employeeNo ||
+          u?.employeeId ||
+          u?.jobNo ||
+          u?.work_no ||
+          u?.work_code ||
+          ''
+        );
+      }
 //update-begin---author:wangshuai---date:2024-02-02---for:【QQYUN-8239】用户角色，添加用户 返回2页数据，实际只显示一页---
 /*      function records2DataList() {
         let arr:any[] = [];
@@ -169,7 +183,8 @@
         onChangeChecked,
         checkStatus,
         showDataList,
-        getFileAccessHttpUrl
+        getFileAccessHttpUrl,
+        workNoOf
       };
     },
   };

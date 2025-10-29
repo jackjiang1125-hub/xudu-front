@@ -19,6 +19,8 @@ export interface AccGroupItem {
 // 选择成员表格的数据结构
 export interface AccMemberItem {
   id: string;
+  // 工号（可选，需在映射中填充）
+  workNo?: string;
   name: string;
   dept: string;
   phone?: string;
@@ -83,24 +85,21 @@ export const groupSearchFormSchema: FormSchema[] = [
 
 export const memberColumns: BasicColumn[] = [
   {
+    title: '工号',
+    dataIndex: 'workNo',
+    width: 140,
+    // 空值回退显示为“-”
+    customRender: ({ text }) => (text ? String(text) : '-'),
+  },
+  {
     title: '姓名',
     dataIndex: 'name',
-    width: 140,
+    width: 150,
   },
   {
-    title: '所属部门',
+    title: '部门',
     dataIndex: 'dept',
-    width: 180,
-  },
-  {
-    title: '联系方式',
-    dataIndex: 'phone',
-    width: 160,
-  },
-  {
-    title: '岗位',
-    dataIndex: 'position',
-    width: 140,
+    width: 200,
   },
 ];
 
@@ -379,10 +378,20 @@ export async function fetchAccMemberList(params: Record<string, any>): Promise<{
     const res: any = await getUserList(query);
     const list = (res?.records ?? []).map((u: any) => ({
       id: String(u.id ?? u.userId ?? u.username ?? ''),
+      // 工号字段兼容多种后端字段名，优先使用 workNo
+      workNo: String(
+        u.workNo ??
+        u.memberCode ??
+        u.userCode ??
+        u.employeeNo ??
+        u.employeeId ??
+        u.jobNo ??
+        u.work_code ??
+        u.work_no ??
+        ''
+      ),
       name: String(u.realname ?? u.username ?? ''),
       dept: String(u.orgCodeTxt ?? u.departName ?? ''),
-      phone: u.phone ? String(u.phone) : '',
-      position: u.post ?? u.position ?? '',
     })) as AccMemberItem[];
 
     return {

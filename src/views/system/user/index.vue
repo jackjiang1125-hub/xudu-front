@@ -54,12 +54,11 @@
 <script lang="ts" name="system-user" setup>
   //ts语法
   import { ref, computed, unref } from 'vue';
-  import { BasicTable, TableAction, ActionItem } from '/@/components/Table';
+  import { BasicTable, TableAction, ActionItem, BasicColumn } from '/@/components/Table';
   import UserDrawer from './UserDrawer.vue';
   import UserRecycleBinModal from './UserRecycleBinModal.vue';
   import PasswordModal from './PasswordModal.vue';
   import UserAgentModal from './UserAgentModal.vue';
-  import JThirdAppButton from '/@/components/jeecg/thirdApp/JThirdAppButton.vue';
   import UserQuitAgentModal from './UserQuitAgentModal.vue';
   import UserQuitModal from './UserQuitModal.vue';
   import { useDrawer } from '/@/components/Drawer';
@@ -86,12 +85,25 @@
   const [registerQuitModal, { openModal: openQuitModal }] = useModal();
 
   // 列表页面公共参数、方法
+  // 根据用户类型动态切换列表列：系统用户 -> 原样；业务用户 -> 隐藏账号/性别/生日/负责部门，并新增“工号”首列
+  const workNoColumn: BasicColumn = {
+    title: '工号',
+    dataIndex: 'workNo',
+    width: 100,
+  };
+  const bizColumns: BasicColumn[] = [
+    workNoColumn,
+    ...columns.filter((c) => !['username', 'sex', 'birthday', 'departIds_dictText'].includes(c.dataIndex as string)),
+  ];
+  // 默认查询业务用户(userType=2)，初始化列为业务用户列
+  const displayColumns = ref<BasicColumn[]>(bizColumns);
+
   const { prefixCls, tableContext, onExportXls, onImportXls } = useListPage({
     designScope: 'user-list',
     tableProps: {
       title: '用户列表',
       api: listNoCareTenant,
-      columns: columns,
+      columns: displayColumns,
       size: 'small',
       formConfig: {
         // labelWidth: 200,
@@ -102,7 +114,10 @@
       },
       beforeFetch: (params) => {
         // 默认按业务用户过滤；若表单选择了值则尊重用户选择
-        return Object.assign({ column: 'createTime', order: 'desc' }, params, { userType: params?.userType ?? 2 });
+        const userType = params?.userType ?? 2;
+        // 动态切换显示列：1=系统用户(原样)，2=业务用户(隐藏指定列并增加工号首列)
+        displayColumns.value = userType === 2 ? bizColumns : columns;
+        return Object.assign({ column: 'createTime', order: 'desc' }, params, { userType });
       },
     },
     exportConfig: {

@@ -38,6 +38,7 @@
 
       <div style="height: 24px; line-height: 24px" class="ellipsis">
         {{ info.realname || info.name }}
+        <span v-if="workNoToShow" style="margin-left: 6px; color: #888;">（工号 {{ workNoToShow }}）</span>
       </div>
 
       <div v-if="showClose" class="icon-close">
@@ -91,11 +92,26 @@
           return false;
         }
       });
+
+      const workNoToShow = computed(() => {
+        const u = props.info || {};
+        return (
+          u.workNo ||
+          u.memberCode ||
+          u.userCode ||
+          u.employeeId ||
+          u.employeeNo ||
+          u.jobNo ||
+          u.no ||
+          ''
+        );
+      });
       
       return {
         showClose,
         removeSelect,
-        getFileAccessHttpUrl
+        getFileAccessHttpUrl,
+        workNoToShow
       };
     },
   };

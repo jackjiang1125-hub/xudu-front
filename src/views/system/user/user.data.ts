@@ -18,13 +18,13 @@ export const columns: BasicColumn[] = [
     title: '头像',
     dataIndex: 'avatar',
     width: 120,
-    customRender: render.renderAvatar,
+    customRender: render.renderImage,
   },
   {
     title: '人脸抠图',
     dataIndex: 'faceCutout',
     width: 120,
-    customRender: render.renderAvatar,
+    customRender: render.renderImage,
   },
   {
     title: '性别',
@@ -77,7 +77,7 @@ export const recycleColumns: BasicColumn[] = [
     title: '头像',
     dataIndex: 'avatar',
     width: 80,
-    customRender: render.renderAvatar,
+    customRender: render.renderImage,
   },
   {
     title: '性别',
@@ -550,7 +550,7 @@ export const userTenantColumns: BasicColumn[] = [
     title: '头像',
     dataIndex: 'avatar',
     width: 120,
-    customRender: render.renderAvatar,
+    customRender: render.renderImage,
   },
   {
     title: '手机号',

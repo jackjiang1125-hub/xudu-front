@@ -25,7 +25,7 @@
                     <a-avatar :size="28">{{ item.name.slice(-2) }}</a-avatar>
                     <div class="item-meta">
                       <div class="item-name">{{ item.name }}</div>
-                      <div class="item-desc">{{ item.dept }} ｜ {{ item.position }}</div>
+                      <div class="item-desc">工号 {{ item.workNo || '-' }} ｜ {{ item.dept }} ｜ {{ item.position || '' }}</div>
                     </div>
                     <a-button type="link" size="small" @click="removeMember(item.id)">移除</a-button>
                   </a-space>
