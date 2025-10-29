@@ -101,7 +101,8 @@
         width: 120,
       },
       beforeFetch: (params) => {
-        return Object.assign({ column: 'createTime', order: 'desc' }, params);
+        // 默认按业务用户过滤；若表单选择了值则尊重用户选择
+        return Object.assign({ column: 'createTime', order: 'desc' }, params, { userType: params?.userType ?? 2 });
       },
     },
     exportConfig: {

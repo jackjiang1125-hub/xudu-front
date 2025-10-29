@@ -104,6 +104,18 @@ export const searchFormSchema: FormSchema[] = [
    //colProps: { span: 6 },
   },
   {
+    label: '用户类型',
+    field: 'userType',
+    component: 'RadioGroup',
+    defaultValue: 2,
+    componentProps: {
+      options: [
+        { label: '系统用户', value: 1, key: '1' },
+        { label: '业务用户', value: 2, key: '2' },
+      ],
+    },
+  },
+  {
     label: '性别',
     field: 'sex',
     component: 'JDictSelectTag',
@@ -141,14 +153,27 @@ export const formSchema: FormSchema[] = [
     show: false,
   },
   {
+    label: '用户类型',
+    field: 'userType',
+    component: 'RadioGroup',
+    defaultValue: 2,
+    componentProps: {
+      options: [
+        { label: '系统用户', value: 1, key: '1' },
+        { label: '业务用户', value: 2, key: '2' },
+      ],
+    },
+  },
+  {
     label: '用户账号',
     field: 'username',
     component: 'Input',
-    required: true,
+    required: false,
     dynamicDisabled: ({ values }) => {
       return !!values.id;
     },
-    dynamicRules: ({ model, schema }) => rules.duplicateCheckRule('sys_user', 'username', model, schema, true),
+    dynamicRules: ({ model, schema, values }) => rules.duplicateCheckRule('sys_user', 'username', model, schema, values.userType === 1),
+    ifShow: ({ values }) => values.userType === 1 || !!values.id,
   },
   {
     label: '登录密码',
@@ -157,22 +182,23 @@ export const formSchema: FormSchema[] = [
     componentProps:{
       autocomplete: 'new-password',
     },
-    rules: [
-      {
-        required: true,
-        message: '请输入登录密码',
-      },
-      {
-        pattern: /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[~!@#$%^&*()_+`\-={}:";'<>?,./]).{8,}$/,
-        message: '密码由8位数字、大小写字母和特殊符号组成!',
-      },
-    ],
+    dynamicRules: ({ values }) => {
+      if (values.userType === 1) {
+        return [
+          { required: true, message: '请输入登录密码' },
+          { pattern: /^(?=.*[a-zA-Z])(?=.*\d)(?=.*[~!@#$%^&*()_+`\-={}:";'<>?,./]).{8,}$/, message: '密码由8位数字、大小写字母和特殊符号组成!' },
+        ];
+      }
+      return [];
+    },
+    ifShow: ({ values }) => values.userType === 1,
   },
   {
     label: '确认密码',
     field: 'confirmPassword',
     component: 'InputPassword',
-    dynamicRules: ({ values }) => rules.confirmPassword(values, true),
+    dynamicRules: ({ values }) => (values.userType === 1 ? rules.confirmPassword(values, true) : []),
+    ifShow: ({ values }) => values.userType === 1,
   },
   {
     label: '用户姓名',

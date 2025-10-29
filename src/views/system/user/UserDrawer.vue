@@ -87,11 +87,11 @@
       {
         field: 'password',
         // 【QQYUN-8324】
-        ifShow: !unref(isUpdate),
+        ifShow: ({ values }) => !unref(isUpdate) && values.userType === 1,
       },
       {
         field: 'confirmPassword',
-        ifShow: !unref(isUpdate),
+        ifShow: ({ values }) => !unref(isUpdate) && values.userType === 1,
       },
       {
         field: 'selectedroles',

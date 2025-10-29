@@ -90,7 +90,11 @@ export const batchDeleteUser = (params, handleSuccess) => {
  */
 export const saveOrUpdateUser = (params, isUpdate) => {
   let url = isUpdate ? Api.edit : Api.save;
-  return defHttp.post({ url: url, params });
+  const p = { ...params };
+  if (p.userType == null) {
+    p.userType = 2;
+  }
+  return defHttp.post({ url: url, params: p });
 };
 /**
  * 唯一校验
