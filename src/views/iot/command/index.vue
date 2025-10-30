@@ -7,19 +7,8 @@
       :formConfig="{ schemas: searchFormSchema }"
       :rowSelection="rowSelection"
     >
-      <template #toolbar>
-        <a-button type="primary" icon="ant-design:plus-outlined" @click="handleAdd">新增命令</a-button>
-        <a-button
-          type="primary"
-          danger
-          icon="ant-design:delete-outlined"
-          :disabled="!hasSelected"
-          @click="handleBatchDelete"
-        >
-          批量删除
-        </a-button>
-        <a-button type="default" icon="ant-design:download-outlined" @click="handleExport">导出命令</a-button>
-        <a-button type="default" icon="ant-design:reload-outlined" @click="handleRefresh">刷新</a-button>
+      <template #tableTitle>
+        <a-button type="default" @click="handleRefresh">刷新</a-button>
       </template>
       <template #action="{ record }">
         <a-space>
