@@ -5,6 +5,7 @@ export interface AccDeviceModel {
   sn?: string;
   deviceType?: string;
   deviceName?: string;
+  online?: boolean;
   firmwareVersion?: string;
   pushVersion?: string;
   lockCount?: number;

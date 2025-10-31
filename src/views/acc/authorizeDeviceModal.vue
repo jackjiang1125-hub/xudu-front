@@ -14,7 +14,7 @@
   import { BasicModal, useModalInner } from '/@/components/Modal';
   import { Description, useDescription } from '/@/components/Description';
   import { BasicForm, useForm, type FormSchema } from '/@/components/Form';
-  import { detailSchema } from './device.data';
+  import { detailSchema } from './device.data.ts';
   import { addAccDevice, type AccDeviceModel } from './devce.api';
   import { useMessage } from '/@/hooks/web/useMessage';
   import { dateUtil } from '/@/utils/dateUtil';

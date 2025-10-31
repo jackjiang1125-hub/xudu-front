@@ -62,10 +62,12 @@
         </template>
       </a-dropdown>
     </template>
-    <template #authorized="{ text }">
-      <a-tag :color="Number(text) === 1 ? 'success' : 'default'">
-        {{ formatAuthorizedText(text) }}
-      </a-tag>
+    <template #onlineStatus="{ record }">
+      <Icon
+        :icon="isOnline(record) ? 'ant-design:check-circle-filled' : 'ant-design:close-circle-filled'"
+        :color="isOnline(record) ? '#52c41a' : '#ff4d4f'"
+        :size="16"
+      />
     </template>
     <template #action="{ record }">
       <TableAction :actions="getTableActions(record)" />
@@ -80,6 +82,7 @@
 <script lang="ts" setup>
   import { BasicTable, TableAction } from '/@/components/Table';
   import type { ActionItem } from '/@/components/Table';
+  import { Icon } from '/@/components/Icon';
   import { useMessage } from '/@/hooks/web/useMessage';
   import { useModal } from '/@/components/Modal';
   import { useListPage } from '/@/hooks/system/useListPage';
@@ -87,8 +90,9 @@
   import DeviceForm from './deviceform.vue';
   import SearchDeviceForm from './searchDeviceForm.vue';
   import AuthorizeDeviceModal from './authorizeDeviceModal.vue';
-  import { columns, searchFormSchema } from './device.data';
+  import { columns, searchFormSchema } from './device.data.ts';
   import { listDevices, type AccDeviceModel, deleteBatchAccDevice, syncAccDeviceTime } from './devce.api';
+  import dayjs from 'dayjs';
 
   const { createMessage, createConfirm } = useMessage();
 
@@ -124,6 +128,16 @@
     },
   });
   const [registerTable, { reload, getSelectRows }] = tableContext;
+
+  function isOnline(record: Partial<AccDeviceModel> & { lastHeartbeatTime?: any }) {
+    if (!record) return false;
+    if (record.online !== undefined && record.online !== null) return !!record.online;
+    const t = (record as any).lastHeartbeatTime;
+    if (!t) return false;
+    const now = dayjs();
+    const hb = dayjs(t);
+    return now.diff(hb, 'second') <= 10;
+  }
 
   function handleOpenSearch() {
     openSearch(true);

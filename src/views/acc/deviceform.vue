@@ -10,7 +10,7 @@
   import { ref } from 'vue';
   import { BasicModal, useModalInner } from '/@/components/Modal';
   import { Description, useDescription } from '/@/components/Description';
-  import { detailSchema } from './device.data';
+  import { detailSchema } from './device.data.ts';
   import { getDeviceDetail, type AccDeviceModel } from './devce.api';
   import { dateUtil } from '/@/utils/dateUtil';
   import { useMessage } from '/@/hooks/web/useMessage';

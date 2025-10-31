@@ -32,7 +32,7 @@ export const columns: BasicColumn[] = [
     customRender: ({ text }) => render.renderDate(text),
   },
   {
-    title: '设备状态',
+    title: '在线状态',
     dataIndex: 'status',
     width: 100,
     customRender: ({ text }) => {
@@ -51,18 +51,6 @@ export const columns: BasicColumn[] = [
       
       const statusInfo = statusMap[text] || { text: text, color: '#666' };
       return h('span', { style: { color: statusInfo.color, fontWeight: 'bold' } }, statusInfo.text);
-    },
-  },
-  {
-    title: '授权状态',
-    dataIndex: 'authorized',
-    width: 100,
-    customRender: ({ text }) => {
-      // 处理布尔值显示
-      const isAuthorized = text === true || text === 'true' || text === 1 || text === '1';
-      const authText = isAuthorized ? '已授权' : '未授权';
-      const authColor = isAuthorized ? '#52c41a' : '#ff4d4f';
-      return h('span', { style: { color: authColor, fontWeight: 'bold' } }, authText);
     },
   },
   {
@@ -127,15 +115,7 @@ export const searchFormSchema: FormSchema[] = [
       placeholder: '请选择设备状态',
     },
   },
-  {
-    field: 'authorized',
-    label: '授权状态',
-    component: 'JDictSelectTag',
-    componentProps: {
-      dictCode: 'yes_no',
-      placeholder: '请选择授权状态',
-    },
-  },
+  
   {
     field: 'createTime',
     label: '创建时间',

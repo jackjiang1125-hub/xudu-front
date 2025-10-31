@@ -15,6 +15,13 @@ export const columns: BasicColumn[] = [
     width: 160,
   },
   {
+    title: '在线状态',
+    dataIndex: 'online',
+    width: 100,
+    align: 'center',
+    slots: { customRender: 'onlineStatus' },
+  },
+  {
     title: '设备名称',
     dataIndex: 'deviceName',
     width: 160,
@@ -43,13 +50,6 @@ export const columns: BasicColumn[] = [
     title: '最后心跳时间',
     dataIndex: 'lastHeartbeatTime',
     width: 180,
-  },
-  {
-    title: '授权状态',
-    dataIndex: 'authorized',
-    width: 100,
-    align: 'center',
-    slots: { customRender: 'authorized' },
   },
 ];
 
