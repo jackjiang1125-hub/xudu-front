@@ -33,6 +33,7 @@ enum Api {
   delete = '/acc/device/delete',
   deleteBatch = '/acc/device/deleteBatch',
   syncTime = '/acc/device/syncTime',
+  setBackendVerification = '/acc/device/setBackendVerification',
 }
 
 export const listDevices = (params?: Record<string, any>) =>
@@ -85,3 +86,10 @@ export const deleteBatchAccDevice = (ids: string[]) =>
 // 批量同步设备时间
 export const syncAccDeviceTime = (data: { sns: string[]; timestamp?: number }) =>
   defHttp.post({ url: Api.syncTime, data });
+
+// 批量设置后台验证参数（启用/禁用 + 离线策略）
+export const setBackendVerification = (data: {
+  sns: string[];
+  enabled: boolean | number;
+  offlinePolicy?: 'standard' | 'reject';
+}) => defHttp.post({ url: Api.setBackendVerification, data });

@@ -8,6 +8,12 @@ enum Api {
   add = '/acc/door/add',
   edit = '/acc/door/edit',
   delete = '/acc/door/delete',
+  remoteOpen = '/acc/door/remoteOpen',
+  remoteClose = '/acc/door/remoteClose',
+  remoteCancelAlarm = '/acc/door/remoteCancelAlarm',
+  remoteHoldOpen = '/acc/door/remoteHoldOpen',
+  remoteLock = '/acc/door/remoteLock',
+  remoteUnlock = '/acc/door/remoteUnlock',
 }
 
 /**
@@ -62,4 +68,46 @@ export const deleteDoor = (params, handleSuccess) => {
         });
     },
   });
+};
+
+/**
+ * 远程开门（批量）
+ */
+export const remoteOpenDoor = (ids: string[], pulseSeconds?: number) => {
+  return defHttp.post({ url: Api.remoteOpen, params: { ids, pulseSeconds } });
+};
+
+/**
+ * 远程关门（批量）
+ */
+export const remoteCloseDoor = (ids: string[]) => {
+  return defHttp.post({ url: Api.remoteClose, params: { ids } });
+};
+
+/**
+ * 取消报警（批量）
+ */
+export const remoteCancelAlarm = (ids: string[]) => {
+  return defHttp.post({ url: Api.remoteCancelAlarm, params: { ids } });
+};
+
+/**
+ * 远程常开（批量）
+ */
+export const remoteHoldOpen = (ids: string[]) => {
+  return defHttp.post({ url: Api.remoteHoldOpen, params: { ids } });
+};
+
+/**
+ * 远程锁定（批量）
+ */
+export const remoteLockDoor = (ids: string[]) => {
+  return defHttp.post({ url: Api.remoteLock, params: { ids } });
+};
+
+/**
+ * 远程解锁（批量）
+ */
+export const remoteUnlockDoor = (ids: string[]) => {
+  return defHttp.post({ url: Api.remoteUnlock, params: { ids } });
 };

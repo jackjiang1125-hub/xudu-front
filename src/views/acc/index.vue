@@ -14,8 +14,8 @@
         <template #overlay>
           <a-menu @click="onOperationSelect">
             <a-menu-item key="setTime">同步时间</a-menu-item>
-            <a-menu-item key="setTimezone">启动</a-menu-item>
-            <a-menu-item key="setRegistrar">禁用</a-menu-item>
+            <!-- <a-menu-item key="setTimezone">启动</a-menu-item>
+            <a-menu-item key="setRegistrar">禁用</a-menu-item> -->
           </a-menu>
         </template>
       </a-dropdown>
@@ -77,6 +77,8 @@
   <SearchDeviceForm @register="registerSearch" @authorize="handleAuthorize" />
   <!-- 新增：设备授权确认弹窗 -->
   <AuthorizeDeviceModal @register="registerAuthorize" @success="reload" />
+  <!-- 新增：后台验证参数配置弹窗 -->
+  <BackendVerificationModal @register="registerVerification" @success="reload" />
 </template>
 
 <script lang="ts" setup>
@@ -90,9 +92,10 @@
   import DeviceForm from './deviceform.vue';
   import SearchDeviceForm from './searchDeviceForm.vue';
   import AuthorizeDeviceModal from './authorizeDeviceModal.vue';
-  import { columns, searchFormSchema } from './device.data.ts';
+  import { columns, searchFormSchema } from './device.data';
   import { listDevices, type AccDeviceModel, deleteBatchAccDevice, syncAccDeviceTime } from './devce.api';
   import dayjs from 'dayjs';
+  import BackendVerificationModal from './backendVerificationModal.vue';
 
   const { createMessage, createConfirm } = useMessage();
 
@@ -100,6 +103,8 @@
   const [registerSearch, { openModal: openSearch }] = useModal();
   // 新增：授权确认弹窗 modal 控制器
   const [registerAuthorize, { openModal: openAuthorize }] = useModal();
+  // 新增：后台验证参数弹窗 modal 控制器
+  const [registerVerification, { openModal: openVerification }] = useModal();
 
   const { tableContext } = useListPage({
     designScope: 'acc-device',
@@ -229,9 +234,16 @@
         }
         break;
       }
-      case 'setVerification':
-        createMessage.info('设置后台验证参数：' + ids);
+      case 'setVerification': {
+        const rows = getSelectRows?.() || [];
+        const sns: string[] = rows.map((r: any) => r?.sn).filter((sn: any) => !!sn);
+        if (sns.length === 0) {
+          createMessage.warning('所选设备缺少序列号，无法设置后台验证参数');
+          return;
+        }
+        openVerification(true, { sns });
         break;
+      }
       case 'setTimezone':
         createMessage.info('设置设备时区：' + ids);
         break;

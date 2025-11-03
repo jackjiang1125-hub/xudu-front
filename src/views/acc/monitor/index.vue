@@ -1,24 +1,24 @@
 <template>
-  <PageWrapper dense contentFull overflowHidden title="Realtime Access Monitor">
+  <PageWrapper dense contentFull overflowHidden title="">
     <div class="monitor-vertical">
       <section class="device-wall">
         <header class="section-header">
           <div class="title">
             <Icon icon="mdi:door" class="title-icon" />
-            <span>Device Overview</span>
+            <span>设备总览</span>
           </div>
           <a-space>
-            <a-select v-model:value="statusFilter" allowClear placeholder="Filter status" style="width: 150px">
-              <a-select-option value="online">Online</a-select-option>
-              <a-select-option value="offline">Offline</a-select-option>
-              <a-select-option value="disabled">Disabled</a-select-option>
+            <a-select v-model:value="statusFilter" allowClear placeholder="筛选状态" style="width: 150px">
+              <a-select-option value="online">在线</a-select-option>
+              <a-select-option value="offline">离线</a-select-option>
+              <a-select-option value="disabled">禁用</a-select-option>
             </a-select>
-            <a-input-search v-model:value="keyword" placeholder="Search name or SN" style="width: 200px" />
+            <a-input-search v-model:value="keyword" placeholder="搜索名称或SN" style="width: 200px" />
           </a-space>
         </header>
 
         <div class="device-grid">
-          <a-empty v-if="!filteredDevices.length" description="No device matches the filter" />
+          <a-empty v-if="!filteredDevices.length" description="无设备满足筛选" />
           <template v-else>
             <a-popover
               v-for="device in filteredDevices"
@@ -37,7 +37,7 @@
                   <p>{{ device.location }}</p>
                   <p>SN: {{ device.sn }}</p>
                   <p>Last heartbeat: {{ device.lastHeartbeat }}</p>
-                  <a-divider>Quick Actions</a-divider>
+                  <a-divider>快速操作</a-divider>
                   <a-space wrap>
                     <a-button
                       v-for="action in getActionsByStatus(device.status)"
@@ -72,11 +72,11 @@
         <header class="section-header">
           <div class="title">
             <Icon icon="mdi:flash" class="title-icon flash" />
-            <span>Realtime Event Stream</span>
+            <span>实时事件流</span>
           </div>
           <a-space>
-            <a-tag color="blue">Refresh: {{ refreshSeconds }}s</a-tag>
-            <a-switch v-model:checked="autoScroll" checked-children="Follow" un-checked-children="Pause" />
+            <a-tag color="blue">刷新: {{ refreshSeconds }}s</a-tag>
+            <a-switch v-model:checked="autoScroll" checked-children="跟随" un-checked-children="暂停" />
           </a-space>
         </header>
         <BasicTable @register="handleRegisterEventTable" />
@@ -90,10 +90,10 @@
             <img :src="faceNotification.avatar" alt="avatar" class="face-photo" />
           </div>
           <div class="face-info">
-            <div class="face-row"><span class="face-label">Name:</span>{{ faceNotification.name }}</div>
-            <div class="face-row"><span class="face-label">Department:</span>{{ faceNotification.department }}</div>
-            <div class="face-row"><span class="face-label">Device:</span>{{ faceNotification.deviceName }}</div>
-            <div class="face-row"><span class="face-label">Time:</span>{{ faceNotification.time }}</div>
+            <div class="face-row"><span class="face-label">姓名:</span>{{ faceNotification.name }}</div>
+            <div class="face-row"><span class="face-label">部门:</span>{{ faceNotification.department }}</div>
+            <div class="face-row"><span class="face-label">设备:</span>{{ faceNotification.deviceName }}</div>
+            <div class="face-row"><span class="face-label">时间:</span>{{ faceNotification.time }}</div>
           </div>
         </div>
       </transition>
@@ -109,23 +109,27 @@
   import { useMessage } from '/@/hooks/web/useMessage';
   import {
     deviceStatusMeta,
-    mockDoorDevices,
     type DoorDevice,
     actionDefinitions,
     eventColumns,
-    mockInitialEvents,
     type EventRecord,
-    mockFaceProfiles,
   } from './deviceMonitor.data';
-  import { random } from 'lodash-es';
+  import { onWebSocket, connectWebSocket } from '/@/hooks/web/useWebSocket';
+  import { useGlobSetting } from '/@/hooks/setting';
+  import { useUserStore } from '/@/store/modules/user';
+  import md5 from 'md5';
+  import { getToken } from '/@/utils/auth';
+  import { getFileAccessHttpUrl } from '/@/utils/common/compUtils';
+  import { listDoor } from '../accdoor/accdoor.api';
 
   const { createMessage } = useMessage();
 
-  const deviceList = ref<DoorDevice[]>([...mockDoorDevices]);
+  const deviceList = ref<DoorDevice[]>([]);
+  const snNameMap = ref<Record<string, string>>({});
   const keyword = ref('');
   const statusFilter = ref<string | undefined>();
 
-  const eventData = ref<EventRecord[]>([...mockInitialEvents]);
+  const eventData = ref<EventRecord[]>([]);
   const autoScroll = ref(true);
   const refreshSeconds = ref(5);
   let intervalHandle: ReturnType<typeof setInterval> | null = null;
@@ -153,7 +157,7 @@
   const tableReady = ref(false);
 
   const [registerEventTable, { setTableData, getPaginationRef }] = useTable({
-    title: 'Realtime Events',
+    title: '事件列表',
     columns: eventColumns,
     dataSource: eventData.value,
     rowKey: 'id',
@@ -164,8 +168,8 @@
     showIndexColumn: true,
   });
 
-  function handleRegisterEventTable(...args: any[]) {
-    registerEventTable(...args);
+  function handleRegisterEventTable(instance: any, ext: any) {
+    registerEventTable(instance, ext);
     tableReady.value = true;
     refreshEventTable();
   }
@@ -173,8 +177,13 @@
   function refreshEventTable() {
     if (!tableReady.value) return;
     setTableData(eventData.value.slice());
-    const paginationRef = getPaginationRef();
-    if (autoScroll.value && paginationRef?.value) {
+    const paginationRef = getPaginationRef() as unknown as { value?: any };
+    if (
+      autoScroll.value &&
+      paginationRef &&
+      paginationRef.value &&
+      typeof paginationRef.value !== 'boolean'
+    ) {
       paginationRef.value.current = 1;
     }
   }
@@ -198,14 +207,13 @@
 
   function handleDeviceAction(action: string, device: DoorDevice) {
     const copy: Record<string, string> = {
-      open: 'Remote open command sent',
-      close: 'Remote close command sent',
-      lock: 'Device locked',
-      unlock: 'Device unlocked',
-      fetch: 'Fetching recent logs...',
+      open: '已发送远程开门指令',
+      close: '已发送远程关门指令',
+      lock: '设备已锁定',
+      unlock: '设备已解锁',
+      fetch: '正在拉取近期日志...',
     };
-    createMessage.success(`${device.name}: ${copy[action] ?? 'Action triggered'}`);
-    pushMockEvent(action, device);
+    createMessage.success(`${device.name}: ${copy[action] ?? '操作已触发'}`);
   }
 
   function showFaceToast(record: EventRecord) {
@@ -251,31 +259,110 @@
   }
 
   function startMockStream() {
-    intervalHandle = setInterval(() => {
-      const idx = random(0, deviceList.value.length - 1);
-      const device = deviceList.value[idx];
-      const prevStatus = device.status;
-      if (Math.random() < 0.25) {
-        const statuses: DoorDevice['status'][] = ['online', 'offline', 'disabled'];
-        device.status = statuses[random(0, statuses.length - 1)];
-        device.lastHeartbeat = new Date().toISOString().slice(0, 19).replace('T', ' ');
+    // 模拟流已关闭，改为基于WebSocket接收
+  }
+
+  function mapVerifyType(verifyType?: number): string {
+    // 保留空壳以兼容旧调用，但不再使用，改用字典渲染
+    return verifyType != null ? String(verifyType) : '未知';
+  }
+
+  function handleWebSocketMessage(data: any) {
+    try {
+      if (!data || data.cmd !== 'acc_rtlog') return;
+      const sn = data.sn || '';
+      const time = data.logTime || new Date().toISOString().slice(0, 19).replace('T', ' ');
+      const pin = data.pin || '';
+      const deviceName = snNameMap.value[sn] || sn; // 映射设备名称
+      const verifyType = Number(data.verifyType);
+      const resultLabel = data.inoutStatus === 1 ? '进' : data.inoutStatus === 0 ? '出' : `事件代码(${data.eventCode ?? ''})`;
+
+      let avatarUrl: string | undefined;
+      const media = data.mediaFile;
+      if (media) {
+        const m = String(media);
+        avatarUrl = /^(https?:|data:)/.test(m) ? m : getFileAccessHttpUrl(m);
       }
-      const roll = Math.random();
-      if (roll < 0.3) {
-        const faceProfile = mockFaceProfiles[random(0, mockFaceProfiles.length - 1)];
-        pushMockEvent('face', device, faceProfile);
-      } else {
-        pushMockEvent('heartbeat', device);
+      const extra = avatarUrl
+        ? {
+            avatar: avatarUrl,
+            name: pin ? `${pin}` : '未知人员',
+            department: '门禁',
+          }
+        : undefined;
+
+      const event: EventRecord = {
+        id: data.msgId || `evt-${Date.now()}`,
+        verifyType,
+        eventCode: data.eventCode != null ? String(data.eventCode) : '',
+        inoutStatus: data.inoutStatus != null ? Number(data.inoutStatus) : undefined,
+        person: pin ? `${pin}` : '系统',
+        time,
+        deviceName,
+        deviceSn: sn,
+        result: resultLabel,
+        extra,
+      };
+      eventData.value = [event, ...eventData.value].slice(0, 100);
+      refreshEventTable();
+      if (extra) {
+        showFaceToast(event);
       }
-      if (prevStatus !== device.status) {
-        createMessage.warning(`${device.name} status changed to ${deviceStatusMeta[device.status].label}`);
+      // 更新设备心跳状态
+      const idx = deviceList.value.findIndex((d) => d.sn === sn);
+      if (idx >= 0) {
+        deviceList.value[idx].status = 'online';
+        deviceList.value[idx].lastHeartbeat = time;
       }
-    }, refreshSeconds.value * 1000);
+    } catch (e) {
+      console.warn('处理WebSocket消息失败', e);
+    }
+  }
+
+  async function fetchDoors() {
+    try {
+      const res = await listDoor({ pageNo: 1, pageSize: 100 });
+      const records = Array.isArray(res?.records)
+        ? res.records
+        : Array.isArray(res?.result?.records)
+        ? res.result.records
+        : [];
+      const mapped: DoorDevice[] = records.map((vo: any) => {
+        const sn: string = vo.deviceSn || '';
+        const name: string = vo.doorName || vo.deviceName || sn || '未命名门';
+        snNameMap.value[sn] = name;
+        return {
+          id: String(vo.id ?? sn ?? name),
+          name,
+          location: String(vo.ipAddress ?? ''),
+          sn,
+          status: 'offline',
+          lastHeartbeat: '',
+        } as DoorDevice;
+      });
+      deviceList.value = mapped;
+    } catch (e) {
+      console.warn('加载门列表失败', e);
+    }
   }
 
   onMounted(() => {
     refreshEventTable();
-    startMockStream();
+    // 注册WebSocket消息监听
+    onWebSocket(handleWebSocketMessage);
+    // 主布局通常已建立连接，这里可选地补充连接（避免重复连接）
+    try {
+      const { domainUrl } = useGlobSetting();
+      const userStore = useUserStore();
+      const token = getToken() || '';
+      const uid = `${userStore.getUserInfo?.id || 'anonymous'}_${md5(token as string)}`;
+      const url = `${domainUrl.replace(/\/$/, '')}/websocket/${uid}`;
+      connectWebSocket(url);
+    } catch (e) {
+      // 忽略连接异常，依赖全局连接
+    }
+    // 加载门列表
+    fetchDoors();
   });
 
   onBeforeUnmount(() => {
