@@ -114,13 +114,14 @@
     eventColumns,
     type EventRecord,
   } from './deviceMonitor.data';
-  import { onWebSocket, connectWebSocket } from '/@/hooks/web/useWebSocket';
+  import { onWebSocket, offWebSocket, connectWebSocket, useMyWebSocket } from '/@/hooks/web/useWebSocket';
   import { useGlobSetting } from '/@/hooks/setting';
   import { useUserStore } from '/@/store/modules/user';
   import md5 from 'md5';
   import { getToken } from '/@/utils/auth';
   import { getFileAccessHttpUrl } from '/@/utils/common/compUtils';
   import { listDoor } from '../accdoor/accdoor.api';
+  import { listDevices } from '/@/views/acc/devce.api';
 
   const { createMessage } = useMessage();
 
@@ -346,26 +347,53 @@
     }
   }
 
+  async function syncAccDeviceStatus() {
+    try {
+      const res = await listDevices({ pageNo: 1, pageSize: 200 });
+      const records = Array.isArray(res?.records)
+        ? res.records
+        : Array.isArray(res?.result?.records)
+        ? res.result.records
+        : [];
+      const statusMap = new Map<string, { online: boolean; hb?: string }>();
+      for (const it of records) {
+        const sn = String(it?.sn || it?.deviceCode || '');
+        if (!sn) continue;
+        const online = it?.online === true || it?.online === 'true' || it?.online === 1;
+        const hbRaw = it?.lastHeartbeatTime;
+        const hb = hbRaw != null ? String(hbRaw).replace('T', ' ') : undefined;
+        statusMap.set(sn, { online, hb });
+      }
+      deviceList.value = deviceList.value.map((d) => {
+        const st = statusMap.get(d.sn);
+        if (!st) return d;
+        return {
+          ...d,
+          status: st.online ? 'online' : 'offline',
+          lastHeartbeat: st.hb || d.lastHeartbeat || '',
+        };
+      });
+    } catch (e) {
+      console.warn('同步设备在线状态失败', e);
+    }
+  }
+
   onMounted(() => {
     refreshEventTable();
     // 注册WebSocket消息监听
     onWebSocket(handleWebSocketMessage);
-    // 主布局通常已建立连接，这里可选地补充连接（避免重复连接）
-    try {
-      const { domainUrl } = useGlobSetting();
-      const userStore = useUserStore();
-      const token = getToken() || '';
-      const uid = `${userStore.getUserInfo?.id || 'anonymous'}_${md5(token as string)}`;
-      const url = `${domainUrl.replace(/\/$/, '')}/websocket/${uid}`;
-      connectWebSocket(url);
-    } catch (e) {
-      // 忽略连接异常，依赖全局连接
-    }
+    // 依赖全局布局建立的 WebSocket 连接，这里不再主动建立，避免重复连接导致断开/重连
     // 加载门列表
     fetchDoors();
+    syncAccDeviceStatus();
+    intervalHandle = setInterval(() => {
+      syncAccDeviceStatus();
+    }, refreshSeconds.value * 1000);
   });
 
   onBeforeUnmount(() => {
+    // 解绑 WebSocket 监听，避免内存泄漏与重复回调
+    offWebSocket(handleWebSocketMessage);
     if (intervalHandle) clearInterval(intervalHandle);
     if (faceTimer) clearTimeout(faceTimer);
   });
