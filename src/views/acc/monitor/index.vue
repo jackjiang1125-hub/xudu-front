@@ -87,7 +87,7 @@
       <transition name="fade-slide">
         <div v-if="faceNotification" class="face-toast">
           <div class="face-photo-wrapper">
-            <img :src="faceNotification.avatar" alt="avatar" class="face-photo" />
+            <img :src="faceNotification.avatar" alt="avatar" class="face-photo" @error="handleFaceImageError" />
           </div>
           <div class="face-info">
             <div class="face-row"><span class="face-label">姓名:</span>{{ faceNotification.name }}</div>
@@ -102,7 +102,7 @@
 </template>
 
 <script lang="ts" setup>
-  import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+  import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
   import { PageWrapper } from '/@/components/Page';
   import { BasicTable, useTable } from '/@/components/Table';
   import { Icon } from '/@/components/Icon';
@@ -114,11 +114,7 @@
     eventColumns,
     type EventRecord,
   } from './deviceMonitor.data';
-  import { onWebSocket, offWebSocket, connectWebSocket, useMyWebSocket } from '/@/hooks/web/useWebSocket';
-  import { useGlobSetting } from '/@/hooks/setting';
-  import { useUserStore } from '/@/store/modules/user';
-  import md5 from 'md5';
-  import { getToken } from '/@/utils/auth';
+  import { onWebSocket, offWebSocket } from '/@/hooks/web/useWebSocket';
   import { getFileAccessHttpUrl } from '/@/utils/common/compUtils';
   import { listDoor } from '../accdoor/accdoor.api';
   import { listDevices } from '/@/views/acc/devce.api';
@@ -145,6 +141,18 @@
   }
 
   const faceNotification = ref<FaceToast | null>(null);
+  // 默认占位图（超过重试次数后使用）
+  import headerImg from '/@/assets/images/header.jpg';
+
+  // 图片加载失败日志与重试状态
+  const failedImageLogs = ref<{ time: string; url: string; attempt: number; status?: number; error?: any }[]>([]);
+  const imageRetryState = {
+    interval: null as ReturnType<typeof setInterval> | null,
+    attempts: 0,
+    controller: null as AbortController | null,
+    url: '' as string,
+    inFlight: false,
+  };
 
   const filteredDevices = computed(() => {
     const kw = keyword.value.trim().toLowerCase();
@@ -219,8 +227,9 @@
 
   function showFaceToast(record: EventRecord) {
     if (!record.extra) return;
+    // 显示弹窗并挂载图片 URL
     faceNotification.value = {
-      avatar: record.extra.avatar ?? 'https://cdn.jsdelivr.net/gh/placeholderjs/face@main/male/64.png',
+      avatar: record.extra.avatar ?? headerImg,
       name: record.extra.name ?? record.person,
       department: record.extra.department ?? 'Unknown Department',
       time: record.time,
@@ -229,39 +238,88 @@
     if (faceTimer) clearTimeout(faceTimer);
     faceTimer = setTimeout(() => {
       faceNotification.value = null;
+      // 弹窗关闭时清理重试与未完成请求
+      stopImageRetry();
     }, 5000);
   }
 
-  function pushMockEvent(action: string, device: DoorDevice, extra?: EventRecord['extra']) {
-    const mapping: Record<string, string> = {
-      open: 'Remote Open',
-      close: 'Remote Close',
-      lock: 'Remote Lock',
-      unlock: 'Unlock',
-      fetch: 'Query Logs',
-      heartbeat: 'Heartbeat',
-      face: 'Face Access Granted',
-    };
-    const event: EventRecord = {
-      id: `evt-${Date.now()}`,
-      type: mapping[action] ?? 'System Event',
-      person: action === 'fetch' ? 'System' : action === 'heartbeat' ? 'Device' : extra?.name ?? 'Security Center',
-      time: new Date().toISOString().slice(0, 19).replace('T', ' '),
-      deviceName: device.name,
-      deviceSn: device.sn,
-      result: deviceStatusMeta[device.status].label,
-      extra,
-    };
-    eventData.value = [event, ...eventData.value].slice(0, 60);
-    refreshEventTable();
-    if (action === 'face' && extra) {
-      showFaceToast(event);
+  function stopImageRetry() {
+    if (imageRetryState.interval) {
+      clearInterval(imageRetryState.interval);
+      imageRetryState.interval = null;
+    }
+    if (imageRetryState.controller) {
+      try { imageRetryState.controller.abort(); } catch (e) {}
+      imageRetryState.controller = null;
+    }
+    imageRetryState.attempts = 0;
+    imageRetryState.inFlight = false;
+    imageRetryState.url = '';
+  }
+
+  async function check404(url: string): Promise<number | undefined> {
+    try {
+      const controller = new AbortController();
+      imageRetryState.controller = controller;
+      const res = await fetch(url, { method: 'HEAD', cache: 'no-store', signal: controller.signal });
+      return res.status;
+    } catch (e) {
+      // 网络或跨域错误，无法获取状态码，返回 undefined
+      return undefined;
     }
   }
 
-  function startMockStream() {
-    // 模拟流已关闭，改为基于WebSocket接收
+  function startImageRetry(originalUrl: string) {
+    stopImageRetry();
+    imageRetryState.url = originalUrl;
+    imageRetryState.attempts = 0;
+    imageRetryState.interval = setInterval(async () => {
+      if (!faceNotification.value || imageRetryState.inFlight) return;
+      imageRetryState.inFlight = true;
+      const attempt = imageRetryState.attempts + 1;
+      const bustUrl = `${originalUrl}${originalUrl.includes('?') ? '&' : '?'}_r=${Date.now()}`;
+      let status: number | undefined;
+      try {
+        status = await check404(bustUrl);
+      } catch (e) {
+        status = undefined;
+      }
+      if (status === 200) {
+        // 成功，更新图片并停止重试
+        faceNotification.value = faceNotification.value && { ...faceNotification.value, avatar: bustUrl };
+        stopImageRetry();
+      } else {
+        // 失败记录日志
+        failedImageLogs.value.push({ time: new Date().toISOString(), url: bustUrl, attempt, status });
+        if (attempt >= 10) {
+          // 超过10次失败，切换为占位图并停止
+          faceNotification.value = faceNotification.value && { ...faceNotification.value, avatar: headerImg };
+          stopImageRetry();
+        } else {
+          imageRetryState.attempts = attempt;
+        }
+      }
+      imageRetryState.inFlight = false;
+    }, 200);
   }
+
+  async function handleFaceImageError() {
+    // 仅在 404 时启动重试机制；无法获取状态时也记录失败
+    const url = faceNotification.value?.avatar;
+    if (!url) return;
+    const status = await check404(url);
+    failedImageLogs.value.push({ time: new Date().toISOString(), url, attempt: 0, status });
+    if (status === 404) {
+      startImageRetry(url);
+    }
+  }
+
+  // 弹窗关闭/消失时，清理重试与未完成请求
+  watch(() => faceNotification.value, (val) => {
+    if (!val) {
+      stopImageRetry();
+    }
+  });
 
   function mapVerifyType(verifyType?: number): string {
     // 保留空壳以兼容旧调用，但不再使用，改用字典渲染
@@ -306,8 +364,12 @@
       };
       eventData.value = [event, ...eventData.value].slice(0, 100);
       refreshEventTable();
+      // 要求：收到数据后，延迟1秒再显示弹窗消息（毫秒级）
       if (extra) {
-        showFaceToast(event);
+        setTimeout(() => {
+          // 显示弹窗
+          showFaceToast(event);
+        }, 1000);
       }
       // 更新设备心跳状态
       const idx = deviceList.value.findIndex((d) => d.sn === sn);
@@ -396,6 +458,7 @@
     offWebSocket(handleWebSocketMessage);
     if (intervalHandle) clearInterval(intervalHandle);
     if (faceTimer) clearTimeout(faceTimer);
+    stopImageRetry();
   });
 </script>
 

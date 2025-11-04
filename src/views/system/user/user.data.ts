@@ -46,6 +46,11 @@ export const columns: BasicColumn[] = [
     width: 100,
   },
   {
+    title: '卡号',
+    dataIndex: 'cardNumber',
+    width: 100,
+  },
+  {
     title: '部门',
     width: 150,
     dataIndex: 'orgCodeTxt',
@@ -113,6 +118,21 @@ export const searchFormSchema: FormSchema[] = [
         { label: '系统用户', value: 1, key: '1' },
         { label: '业务用户', value: 2, key: '2' },
       ],
+    },
+  },
+  {
+    label: '卡号',
+    field: 'cardNumber',
+    component: 'JInput',
+  },
+  {
+    label: '管理员密码',
+    field: 'adminPassword',
+    component: 'JInput',
+    componentProps: {
+      maxlength: 6,
+      inputmode: 'numeric',
+      placeholder: '请输入6位数字',
     },
   },
   {
@@ -214,6 +234,36 @@ export const formSchema: FormSchema[] = [
     dynamicRules: ({ model, schema }) => rules.duplicateCheckRule('sys_user', 'work_no', model, schema, true),
   },
   {
+    label: '卡号',
+    field: 'cardNumber',
+    component: 'Input',
+    required: false,
+    ifShow: ({ values }) => values.userType === 2,
+  },
+  {
+    label: '管理员密码',
+    field: 'adminPassword',
+    component: 'InputPassword',
+    required: false,
+    componentProps: {
+      maxlength: 6,
+      inputmode: 'numeric',
+      placeholder: '请输入6位数字',
+    },
+    rules: [
+      {
+        validator: (_, value) => {
+          if (!value) return Promise.resolve();
+          return /^\d{6}$/.test(value)
+            ? Promise.resolve()
+            : Promise.reject('请输入6位数字');
+        },
+        trigger: 'blur',
+      },
+    ],
+    ifShow: ({ values }) => values.userType === 2,
+  },
+  {
     label: '职务',
     field: 'post',
     required: false,
@@ -274,6 +324,8 @@ export const formSchema: FormSchema[] = [
       async: true,
       multiple: true
     },
+    // 业务用户新增时隐藏（仅系统用户或编辑时显示）
+    ifShow: ({ values }) => values.userType !== 2 || !!values.id,
   },
   {
     label: '身份',
@@ -291,6 +343,8 @@ export const formSchema: FormSchema[] = [
         },
       };
     },
+    // 业务用户新增时隐藏（仅系统用户或编辑时显示）
+    ifShow: ({ values }) => values.userType !== 2 || !!values.id,
   },
   {
     label: '负责部门',
@@ -361,6 +415,8 @@ export const formSchema: FormSchema[] = [
     field: 'telephone',
     component: 'Input',
     rules: [{ pattern: /^0\d{2,3}-[1-9]\d{6,7}$/, message: '请输入正确的座机号码' }],
+    // 业务用户新增时隐藏（仅系统用户或编辑时显示）
+    ifShow: ({ values }) => values.userType !== 2 || !!values.id,
   },
   {
     label: '工作流引擎',

@@ -8,6 +8,30 @@
         <a-button type="primary" preIcon="ant-design:plus-outlined" @click="handleCreate"> 新增</a-button>
         <a-button type="primary" preIcon="ant-design:export-outlined" @click="onExportXls" :disabled="isDisabledAuth('system:user:export')"> 导出</a-button>
         <j-upload-button type="primary" preIcon="ant-design:import-outlined" @click="onImportXls">导入</j-upload-button>
+        <!-- 业务用户导入下拉 -->
+        <a-dropdown>
+          <template #overlay>
+            <a-menu>
+              <a-menu-item key="biz-import">
+                <j-upload-button type="link" @click="handleBizUserImport">
+                  导入业务用户
+                </j-upload-button>
+              </a-menu-item>
+              <a-menu-item key="biz-photo-import">
+                <j-upload-button type="link" @click="handleBizUserPhotoImport">
+                  导入业务用户照片
+                </j-upload-button>
+              </a-menu-item>
+              <a-menu-item key="biz-template" @click="downloadBizUserTemplate">
+                <Icon icon="ant-design:download-outlined" /> 下载导入业务用户模版
+              </a-menu-item>
+            </a-menu>
+          </template>
+          <a-button type="primary">
+            业务用户导入
+            <Icon icon="mdi:chevron-down" />
+          </a-button>
+        </a-dropdown>
         <a-button type="primary" @click="openModal(true, {})" preIcon="ant-design:hdd-outlined"> 回收站</a-button>
         <a-dropdown v-if="selectedRowKeys.length > 0">
           <template #overlay>
@@ -67,8 +91,9 @@
   import { useModal } from '/@/components/Modal';
   import { useMessage } from '/@/hooks/web/useMessage';
   import { columns, searchFormSchema } from './user.data';
-  import { listNoCareTenant, deleteUser, batchDeleteUser, getImportUrl, getExportUrl, frozenBatch } from './user.api';
+  import { listNoCareTenant, deleteUser, batchDeleteUser, getImportUrl, getExportUrl, frozenBatch, getBizUserImportUrl, getBizUserPhotoImportUrl, getBizUserTemplateUrl } from './user.api';
   import {usePermission} from "/@/hooks/web/usePermission";
+  import { useMethods } from '/@/hooks/system/useMethods';
 
   const { createMessage, createConfirm } = useMessage();
   const { isDisabledAuth } = usePermission();
@@ -132,6 +157,20 @@
 
   //注册table数据
   const [registerTable, { reload, updateTableDataRecord }, { rowSelection, selectedRows, selectedRowKeys }] = tableContext;
+
+  // 业务用户导入/模板下载处理
+  const { handleImportXls, handleExportXls } = useMethods();
+  function handleBizUserImport(file) {
+    // 使用专用业务用户导入地址
+    return handleImportXls(file, getBizUserImportUrl, reload);
+  }
+  function handleBizUserPhotoImport(file) {
+    return handleImportXls(file, getBizUserPhotoImportUrl, reload);
+  }
+  function downloadBizUserTemplate() {
+    // 下载导入模板
+    return handleExportXls('业务用户导入模板', getBizUserTemplateUrl, {});
+  }
 
   /**
    * 新增事件

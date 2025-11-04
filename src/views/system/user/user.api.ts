@@ -15,6 +15,10 @@ enum Api {
   deleteBatch = '/sys/user/deleteBatch',
   importExcel = '/sys/user/importExcel',
   exportXls = '/sys/user/exportXls',
+  // 业务用户导入相关
+  importBizExcel = '/sys/user/importBizExcel',
+  importBizPhoto = '/sys/user/importBizPhoto',
+  bizImportTemplate = '/sys/user/bizUserImportTemplate',
   recycleBinList = '/sys/user/recycleBin',
   putRecycleBin = '/sys/user/putRecycleBin',
   deleteRecycleBin = '/sys/user/deleteRecycleBin',
@@ -41,6 +45,18 @@ export const getExportUrl = Api.exportXls;
  * 导入api
  */
 export const getImportUrl = Api.importExcel;
+/**
+ * 业务用户导入 URL（Excel）
+ */
+export const getBizUserImportUrl = Api.importBizExcel;
+/**
+ * 业务用户照片导入 URL
+ */
+export const getBizUserPhotoImportUrl = Api.importBizPhoto;
+/**
+ * 下载业务用户导入模板 URL
+ */
+export const getBizUserTemplateUrl = Api.bizImportTemplate;
 /**
  * 列表接口(查询用户，通过租户隔离)
  * @param params
