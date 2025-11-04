@@ -124,7 +124,6 @@
     mealOrderPickupMethodOptions,
     mealOrderChannelOptions,
     mealOrderSearchFormSchema,
-    mockMealOrderRecordList,
     type MealOrderRecord,
     type MealOrderDetailType,
     type MealOrderStatus,
@@ -132,10 +131,11 @@
     type MealOrderPickupMethod,
     type MealOrderChannel,
   } from './mealOrderRecord.data';
+  import { getMealOrderList, getMealOrderDetail } from './mealOrderRecord.api';
 
   dayjs.extend(isBetween);
 
-  const mealOrderStore = ref<MealOrderRecord[]>([...mockMealOrderRecordList]);
+  // 不再需要本地存储，直接从API获取
   const detailColumns = mealOrderDetailColumns;
   const detailVisible = ref(false);
   const detailRecord = ref<MealOrderRecord | null>(null);
@@ -157,68 +157,65 @@
   }
 
   const fetchMealOrderList = async (params: Record<string, any> = {}) => {
-    const {
-      pageNo = 1,
-      pageSize = 10,
-      orderNo,
-      customerName,
-      orderDetailType,
-      orderStatus,
-      payStatus,
-      channel,
-      diningDateRange,
-    } = params;
-
-    let items = [...mealOrderStore.value];
-
-    if (orderNo) {
-      const keyword = toLower(orderNo);
-      items = items.filter((item) => toLower(item.orderNo).includes(keyword));
-    }
-
-    if (customerName) {
-      const keyword = toLower(customerName);
-      items = items.filter((item) => toLower(item.customerName).includes(keyword));
-    }
-
-    if (orderDetailType) {
-      items = items.filter((item) => item.orderDetailType === orderDetailType);
-    }
-
-    if (orderStatus) {
-      items = items.filter((item) => item.orderStatus === orderStatus);
-    }
-
-    if (payStatus) {
-      items = items.filter((item) => item.payStatus === payStatus);
-    }
-
-    if (channel) {
-      items = items.filter((item) => item.channel === channel);
-    }
-
-    if (Array.isArray(diningDateRange) && diningDateRange.length === 2) {
-      const [startValue, endValue] = diningDateRange;
-      const start = dayjs(startValue);
-      const end = dayjs(endValue);
-      if (start.isValid() && end.isValid()) {
-        items = items.filter((item) => {
-          const diningDate = dayjs(item.diningDate);
-          return diningDate.isBetween(start, end, 'day', '[]');
-        });
+    try {
+      // 处理时间范围参数名转换
+      const requestParams = { ...params };
+      
+      // 将前端的diningDateRange转换为后端可能需要的diningDateStart和diningDateEnd
+      if (requestParams.diningDateRange && Array.isArray(requestParams.diningDateRange) && requestParams.diningDateRange.length === 2) {
+        requestParams.diningDateStart = requestParams.diningDateRange[0];
+        requestParams.diningDateEnd = requestParams.diningDateRange[1];
+        delete requestParams.diningDateRange;
       }
+      
+      console.log('订餐记录请求参数:', requestParams);
+      
+      // 调用后端API获取订餐记录列表
+      const response = await getMealOrderList(requestParams);
+      
+      // 打印完整响应数据，帮助调试
+      console.log('订餐记录API响应数据:', JSON.stringify(response));
+      
+      // 根据API定义正确解析响应格式
+      if (response && response.success === true) {
+        // 检查响应数据格式
+        if (response.data) {
+          // 确保records是数组格式
+          let records = Array.isArray(response.data.records) ? response.data.records : [];
+          // 确保total是数字格式
+          const total = typeof response.data.total === 'number' ? response.data.total : 0;
+          
+          console.log(`获取并规范化了${records.length}条订餐记录，总计${total}条`);
+          
+          return {
+            records,
+            total
+          };
+        } else {
+          console.warn('响应数据字段为空:', response);
+          return {
+            records: [],
+            total: 0
+          };
+        }
+      } else {
+        console.warn('后端API返回异常:', response);
+        createMessage.error('获取订餐记录失败，请稍后重试');
+        
+        return {
+          records: [],
+          total: 0
+        };
+      }
+    } catch (error) {
+      console.error('获取订餐记录失败:', error);
+      createMessage.error('获取订餐记录失败，请稍后重试');
+      
+      return {
+        records: [],
+        total: 0
+      };
     }
-
-    const total = items.length;
-    const currentPage = Number(pageNo) || 1;
-    const size = Number(pageSize) || 10;
-    const startIndex = (currentPage - 1) * size;
-    const records = items.slice(startIndex, startIndex + size);
-
-    return {
-      records,
-      total,
-    };
   };
 
   const [registerTable] = useTable({
@@ -255,23 +252,59 @@
   }
 
   function formatOrderType(value: MealOrderDetailType) {
-    return formatFromOptions(value, mealOrderDetailTypeOptions as any);
+    if (!value) return '-';
+    // 同时支持从options和直接映射获取
+    const typeMap = {
+      'detail': '点餐',
+      'package': '套餐'
+    };
+    return typeMap[value] || formatFromOptions(value, mealOrderDetailTypeOptions as any);
   }
 
   function formatOrderStatus(value: MealOrderStatus) {
-    return formatFromOptions(value, mealOrderStatusOptions as any);
+    if (!value) return '-';
+    // 同时支持从options和直接映射获取
+    const statusMap = {
+      'pending': '待处理',
+      'processing': '处理中',
+      'completed': '已完成',
+      'cancelled': '已取消'
+    };
+    return statusMap[value] || formatFromOptions(value, mealOrderStatusOptions as any);
   }
 
   function formatPayStatus(value: MealOrderPayStatus) {
-    return formatFromOptions(value, mealOrderPayStatusOptions as any);
+    if (!value) return '-';
+    // 同时支持从options和直接映射获取
+    const statusMap = {
+      'unpaid': '未支付',
+      'paid': '已支付',
+      'refunded': '已退款'
+    };
+    return statusMap[value] || formatFromOptions(value, mealOrderPayStatusOptions as any);
   }
 
   function formatPickupMethod(value: MealOrderPickupMethod) {
-    return formatFromOptions(value, mealOrderPickupMethodOptions as any);
+    if (!value) return '-';
+    // 同时支持从options和直接映射获取
+    const methodMap = {
+      'takeaway': '外卖',
+      'dinein': '堂食',
+      'delivery': '配送'
+    };
+    return methodMap[value] || formatFromOptions(value, mealOrderPickupMethodOptions as any);
   }
 
   function formatChannel(value: MealOrderChannel) {
-    return formatFromOptions(value, mealOrderChannelOptions as any);
+    if (!value) return '-';
+    // 同时支持从options和直接映射获取
+    const channelMap = {
+      'app': 'APP',
+      'website': '网站',
+      'phone': '电话',
+      'wechat': '微信'
+    };
+    return channelMap[value] || formatFromOptions(value, mealOrderChannelOptions as any);
   }
 
   function getOrderStatusColor(value: MealOrderStatus) {
@@ -303,8 +336,28 @@
   }
 
   function handleView(record: MealOrderRecord) {
-    detailRecord.value = { ...record };
-    detailVisible.value = true;
+    console.log('查看订餐记录:', record);
+    
+    // 调用后端API获取详细信息
+    const loadDetail = async () => {
+      try {
+        const response = await getMealOrderDetail(record.id);
+        console.log('获取订餐详情响应:', response);
+        
+        // 根据API定义正确解析响应格式
+        if (response.success && response.data) {
+          detailRecord.value = response.data;
+          detailVisible.value = true;
+        } else {
+          createMessage.error('获取订餐详情失败');
+        }
+      } catch (error) {
+        console.error('获取订餐详情失败:', error);
+        createMessage.error('获取订餐详情失败，请稍后重试');
+      }
+    };
+    
+    loadDetail();
   }
 
   function handleUnsupportedDetail(record: MealOrderRecord) {
