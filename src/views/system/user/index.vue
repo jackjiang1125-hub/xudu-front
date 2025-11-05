@@ -7,7 +7,7 @@
         <a-button @click="reload"> 刷新</a-button>
         <a-button type="primary" preIcon="ant-design:plus-outlined" @click="handleCreate"> 新增</a-button>
         <a-button type="primary" preIcon="ant-design:export-outlined" @click="onExportXls" :disabled="isDisabledAuth('system:user:export')"> 导出</a-button>
-        <j-upload-button type="primary" preIcon="ant-design:import-outlined" @click="onImportXls">导入</j-upload-button>
+        <!-- <j-upload-button type="primary" preIcon="ant-design:import-outlined" @click="onImportXls">导入</j-upload-button> -->
         <!-- 业务用户导入下拉 -->
         <a-dropdown>
           <template #overlay>
@@ -18,9 +18,9 @@
                 </j-upload-button>
               </a-menu-item>
               <a-menu-item key="biz-photo-import">
-                <j-upload-button type="link" @click="handleBizUserPhotoImport">
+                <a-button type="link" @click="handleBizUserPhotoImport">
                   导入业务用户照片
-                </j-upload-button>
+                </a-button>
               </a-menu-item>
               <a-menu-item key="biz-template" @click="downloadBizUserTemplate">
                 <Icon icon="ant-design:download-outlined" /> 下载导入业务用户模版
@@ -73,6 +73,8 @@
     <UserQuitAgentModal @register="registerQuitAgentModal" @success="reload" />
     <!-- 离职人员列弹窗 -->
     <UserQuitModal @register="registerQuitModal" @success="reload" />
+    <!-- 业务用户照片导入弹窗 -->
+    <BizPhotoImportModal ref="bizPhotoModalRef" @success="reload" />
   </div>
 </template>
 
@@ -86,6 +88,7 @@
   import UserAgentModal from './UserAgentModal.vue';
   import UserQuitAgentModal from './UserQuitAgentModal.vue';
   import UserQuitModal from './UserQuitModal.vue';
+  import BizPhotoImportModal from './BizPhotoImportModal.vue';
   import { useDrawer } from '/@/components/Drawer';
   import { useListPage } from '/@/hooks/system/useListPage';
   import { useModal } from '/@/components/Modal';
@@ -109,6 +112,8 @@
   const [registerQuitAgentModal, { openModal: openQuitAgentModal }] = useModal();
   //离职用户列表model
   const [registerQuitModal, { openModal: openQuitModal }] = useModal();
+  // 业务用户照片导入弹窗引用
+  const bizPhotoModalRef = ref<any>(null);
 
   // 列表页面公共参数、方法
   // 根据用户类型动态切换列表列：系统用户 -> 原样；业务用户 -> 隐藏账号/性别/生日/负责部门，并新增“工号”首列
@@ -164,8 +169,8 @@
     // 使用专用业务用户导入地址
     return handleImportXls(file, getBizUserImportUrl, reload);
   }
-  function handleBizUserPhotoImport(file) {
-    return handleImportXls(file, getBizUserPhotoImportUrl, reload);
+  function handleBizUserPhotoImport() {
+    bizPhotoModalRef.value?.open();
   }
   function downloadBizUserTemplate() {
     // 下载导入模板

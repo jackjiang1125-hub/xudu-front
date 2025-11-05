@@ -60,7 +60,7 @@
         default: () => [],
       },
     },
-    emits: ['change', 'register', 'delete'],
+    emits: ['change', 'register', 'delete', 'uploaded'],
     setup(props, { emit }) {
       const state = reactive<{ fileList: FileItem[] }>({
         fileList: [],
@@ -214,6 +214,7 @@
             })
           );
           isUploadingRef.value = false;
+          emit('uploaded', fileListRef.value);
           // 生产环境:抛出错误
           const errorList = data.filter((item: any) => !item.success);
           if (errorList.length > 0) throw errorList;
