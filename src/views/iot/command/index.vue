@@ -4,7 +4,6 @@
       @register="registerTable"
       :columns="columns"
       :api="listCommands"
-      :formConfig="{ schemas: searchFormSchema }"
       :rowSelection="rowSelection"
     >
       <template #tableTitle>
@@ -33,8 +32,29 @@ import { useMessage } from '/@/hooks/web/useMessage';
 import { listCommands, deleteCommand, deleteBatchCommands, exportCommands, retryCommand } from './command.api';
 import { columns, searchFormSchema } from './command.data';
 import CommandForm from './CommandForm.vue';
+import { dateUtil } from '/@/utils/dateUtil';
+const extraSchemas: any[] = [
+  { field: 'commandContent', label: '命令内容', component: 'JInput', componentProps: { placeholder: '支持模糊查询' } },
+  { field: 'status', label: '状态', component: 'JSelect', componentProps: { options: [
+    { label: '待发送', value: 'PENDING' },
+    { label: '已发送', value: 'SENT' },
+    { label: '已确认', value: 'ACKED' },
+    { label: '失败', value: 'FAILED' },
+  ], placeholder: '请选择状态' } },
+  { field: 'enqueueTime', label: '入队时间', component: 'RangePicker', defaultValue: [dateUtil().startOf('day'), dateUtil().endOf('day')], componentProps: { showTime: true, valueFormat: 'YYYY-MM-DD HH:mm:ss', placeholder: ['开始时间', '结束时间'] } },
+];
+const schemas = [...searchFormSchema, ...extraSchemas];
 
-const [registerTable, { reload, getSelectRows }] = useTable();
+const [registerTable, { reload, getSelectRows }] = useTable({
+  useSearchForm: true,
+  formConfig: {
+    schemas,
+    fieldMapToTime: [[ 'enqueueTime', ['enqueueTime_begin','enqueueTime_end'], 'YYYY-MM-DD HH:mm:ss' ]],
+    showAdvancedButton: true,
+    baseColProps: { span: 12 },
+    labelWidth: 110,
+  },
+});
 const drawerVisible = ref(false);
 const currentRecord = ref<any>({});
 const { createConfirm, createMessage } = useMessage();

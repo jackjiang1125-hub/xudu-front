@@ -1,5 +1,6 @@
 import { BasicColumn, FormSchema } from '/@/components/Table';
 import { render } from '/@/utils/common/renderUtils';
+// import { dateUtil } from '/@/utils/dateUtil';
 
 export const columns: BasicColumn[] = [
   {
@@ -27,9 +28,8 @@ export const columns: BasicColumn[] = [
       const statusMap = {
         'PENDING': { text: '待发送', color: 'orange' },
         'SENT': { text: '已发送', color: 'blue' },
-        'ACKNOWLEDGED': { text: '已确认', color: 'green' },
+        'ACKED': { text: '已确认', color: 'green' },
         'FAILED': { text: '失败', color: 'red' },
-        'TIMEOUT': { text: '超时', color: 'red' },
       };
       const status = statusMap[text] || { text: text, color: 'default' };
       return render.renderTag(status.text, status.color);
@@ -92,30 +92,6 @@ export const searchFormSchema: FormSchema[] = [
     component: 'JInput',
     componentProps: {
       placeholder: '请输入命令代码',
-    },
-  },
-  {
-    field: 'status',
-    label: '状态',
-    component: 'JSelect',
-    componentProps: {
-      options: [
-        { label: '待发送', value: 'PENDING' },
-        { label: '已发送', value: 'SENT' },
-        { label: '已确认', value: 'ACKNOWLEDGED' },
-        { label: '失败', value: 'FAILED' },
-        { label: '超时', value: 'TIMEOUT' },
-      ],
-      placeholder: '请选择状态',
-    },
-  },
-  {
-    field: 'enqueueTime',
-    label: '入队时间',
-    component: 'JDatePicker',
-    componentProps: {
-      valueFormat: 'YYYY-MM-DD',
-      placeholder: '请选择入队时间',
     },
   },
   {

@@ -129,11 +129,14 @@
       await setFieldsValue({ relTenantIds: getTenantId().toString() })
     }
     //update-end---author:wangshuai ---date:20230522  for：【issues/4935】租户用户编辑界面中租户下拉框未过滤，显示当前系统所有的租户------------
-    // 无论新增还是编辑，都可以设置表单值
+    // 无论新增还是编辑，都可以设置表单值（归一化后端返回类型）
     if (typeof data.record === 'object') {
-      setFieldsValue({
-        ...data.record,
-      });
+      const normalized: any = { ...data.record };
+      // 超级用户：将 '0'/'1' 或 0/1 统一为数字，便于 Select 正确匹配显示标签
+      if (normalized.superUser !== undefined && normalized.superUser !== null) {
+        normalized.superUser = Number(normalized.superUser);
+      }
+      setFieldsValue(normalized);
     }
     // 隐藏底部时禁用整个表单
     //update-begin-author:taoyan date:2022-5-24 for: VUEN-1117【issue】0523周开源问题

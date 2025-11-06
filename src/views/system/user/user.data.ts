@@ -127,7 +127,7 @@ export const searchFormSchema: FormSchema[] = [
   },
   {
     label: '管理员密码',
-    field: 'adminPassword',
+    field: 'verifyPassword',
     component: 'JInput',
     componentProps: {
       maxlength: 6,
@@ -241,8 +241,8 @@ export const formSchema: FormSchema[] = [
     ifShow: ({ values }) => values.userType === 2,
   },
   {
-    label: '管理员密码',
-    field: 'adminPassword',
+    label: '验证密码',
+    field: 'verifyPassword',
     component: 'InputPassword',
     required: false,
     componentProps: {
@@ -417,6 +417,82 @@ export const formSchema: FormSchema[] = [
     rules: [{ pattern: /^0\d{2,3}-[1-9]\d{6,7}$/, message: '请输入正确的座机号码' }],
     // 业务用户新增时隐藏（仅系统用户或编辑时显示）
     ifShow: ({ values }) => values.userType !== 2 || !!values.id,
+  },
+  // ---------------- 业务用户扩展字段 ----------------
+  {
+    label: '超级用户',
+    field: 'superUser',
+    component: 'Select',
+    defaultValue: 0,
+    componentProps: {
+      options: [
+        { label: '否', value: 0 },
+        { label: '是', value: 1 },
+      ],
+    },
+    helpMessage: '超级用户不受时间段、反潜、互锁、多卡开门、节假日、时间反潜等限制，有很高的开门优先级。',
+    ifShow: ({ values }) => values.userType === 2,
+  },
+  {
+    label: '设备权限',
+    field: 'deviceOpPerm',
+    component: 'Select',
+    defaultValue: 1,
+    componentProps: {
+      options: [
+        { label: '一般人员', value: 1 },
+        { label: '管理员', value: 2 },
+        { label: '操作员', value: 3 },
+      ],
+    },
+    helpMessage: '选择设备操作权限，默认一般人员。',
+    ifShow: ({ values }) => values.userType === 2,
+  },
+  {
+    label: '延长通行',
+    field: 'extendAccess',
+    component: 'Checkbox',
+    defaultValue: false,
+    helpMessage: '勾选后，可延长该人员通行时的等待时间。适用于残疾人或者其他有特别需要的人群。',
+    ifShow: ({ values }) => values.userType === 2,
+  },
+  {
+    label: '禁止名单',
+    field: 'prohibitedRoster',
+    component: 'Checkbox',
+    defaultValue: false,
+    helpMessage: '勾选后，将临时禁用该用户的门禁权限',
+    ifShow: ({ values }) => values.userType === 2,
+  },
+  {
+    label: '有效时间',
+    field: 'validTimeEnabled',
+    component: 'Checkbox',
+    defaultValue: false,
+    helpMessage: '部分设备有效时间只支持设置年月日',
+    ifShow: ({ values }) => values.userType === 2,
+  },
+  {
+    label: '有效开始时间',
+    field: 'validStartTime',
+    component: 'DatePicker',
+    componentProps: {
+      showTime: true,
+      valueFormat: 'YYYY-MM-DD HH:mm:ss',
+      getPopupContainer: () => document.body,
+    },
+    ifShow: ({ values }) => values.userType === 2 && values.validTimeEnabled === true,
+  },
+  {
+    label: '有效结束时间',
+    field: 'validEndTime',
+    component: 'DatePicker',
+    componentProps: {
+      showTime: true,
+      valueFormat: 'YYYY-MM-DD HH:mm:ss',
+      getPopupContainer: () => document.body,
+    },
+    ifShow: ({ values }) => values.userType === 2 && values.validTimeEnabled === true,
   },
   {
     label: '工作流引擎',
