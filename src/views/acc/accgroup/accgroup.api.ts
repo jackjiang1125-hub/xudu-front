@@ -39,6 +39,7 @@ enum Api {
   detail = '/acc/accgroup/detail',
   add = '/acc/accgroup/add',
   edit = '/acc/accgroup/edit',
+  editNew = '/acc/accgroup/editNew',
   delete = '/acc/accgroup/delete',
   deleteBatch = '/acc/accgroup/deleteBatch',
   listMembers = '/acc/accgroupmember/listByGroup',
@@ -60,6 +61,10 @@ export const addAccGroup = (vo: AccGroupVO) =>
 
 export const editAccGroup = (vo: AccGroupVO) =>
   defHttp.put({ url: Api.edit, params: vo });
+
+// 仅更新基础信息（不携带成员和设备）
+export const editAccGroupNew = (vo: Pick<AccGroupVO, 'id' | 'groupName' | 'periodId' | 'remark'>) =>
+  defHttp.put({ url: Api.editNew, params: vo });
 
 export const deleteAccGroup = (id: string) =>
   defHttp.delete({ url: Api.delete, params: { id } }, { joinParamsToUrl: true });

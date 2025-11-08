@@ -8,6 +8,7 @@ enum Api {
   deleteBatch = '/iot/acc/command/deleteBatch',
   export = '/iot/acc/command/export',
   retry = '/iot/acc/command/retry',
+  clearAll = '/iot/acc/command/clearAll',
 }
 
 /**
@@ -44,3 +45,8 @@ export const exportCommands = () => defHttp.get({ url: Api.export }, { responseT
  * 重试命令
  */
 export const retryCommand = (id) => defHttp.post({ url: Api.retry, params: { id } }, { joinParamsToUrl: true });
+
+/**
+ * 清除全部命令
+ */
+export const clearAllCommands = () => defHttp.delete({ url: Api.clearAll });

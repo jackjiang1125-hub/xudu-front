@@ -67,6 +67,13 @@ export const groupColumns: BasicColumn[] = [
     dataIndex: 'remark',
     ellipsis: true,
   },
+  {
+    title: '操作',
+    dataIndex: 'action',
+    width: 160,
+    fixed: 'right',
+    slots: { customRender: 'action' },
+  },
 ];
 
 export const groupSearchFormSchema: FormSchema[] = [

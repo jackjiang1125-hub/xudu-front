@@ -2,14 +2,14 @@
   <BasicModal
     @register="registerModal"
     :title="modalTitle"
-    :width="960"
+    :width="isUpdate ? 560 : 960"
     :maskClosable="false"
     @ok="handleSubmit"
   >
     <BasicForm @register="registerForm" />
-    <a-divider orientation="left">授权对象配置</a-divider>
+    <a-divider v-if="!isUpdate" orientation="left">授权对象配置</a-divider>
 
-    <a-card class="selected-overview" :bodyStyle="{ padding: '12px 16px' }" bordered>
+    <a-card v-if="!isUpdate" class="selected-overview" :bodyStyle="{ padding: '12px 16px' }" bordered>
       <a-row :gutter="16">
         <a-col :span="12">
           <div class="overview-title">
@@ -64,7 +64,7 @@
       </a-row>
     </a-card>
 
-    <a-tabs v-model:activeKey="activeTab" class="selector-tabs">
+    <a-tabs v-if="!isUpdate" v-model:activeKey="activeTab" class="selector-tabs">
       <a-tab-pane key="member" tab="人员授权">
         <BasicTable @register="registerMemberTable" size="small">
           <template #tableTitle>
@@ -275,11 +275,19 @@
     const record = currentRecord.value;
     periodName.value = record?.periodName ?? '';
 
-    selectedMemberKeys.value = record?.members ? [...record.members] : [];
-    selectedDoorKeys.value = record?.devices ? [...record.devices] : [];
-    // 预加载编辑态已选项详情，用于右侧预览
-    await preloadSelectedMembers();
-    await preloadSelectedDoors();
+    // 仅新增场景需要加载和显示人员/门选择
+    if (!isUpdate.value) {
+      selectedMemberKeys.value = record?.members ? [...record.members] : [];
+      selectedDoorKeys.value = record?.devices ? [...record.devices] : [];
+      await preloadSelectedMembers();
+      await preloadSelectedDoors();
+    } else {
+      // 编辑场景不展示授权对象，避免多余的预加载
+      selectedMemberKeys.value = record?.members ? [...record.members] : [];
+      selectedDoorKeys.value = record?.devices ? [...record.devices] : [];
+      selectedMemberRows.value = [];
+      selectedDoorRows.value = [];
+    }
 
     await setFieldsValue({
       groupName: record?.groupName ?? '',
@@ -287,10 +295,12 @@
       remark: record?.remark ?? '',
     });
 
-    await Promise.all([reloadMemberTable({ page: 1 }), reloadDoorTable({ page: 1 })]);
-    await nextTick();
-    setMemberRowKeys?.(selectedMemberKeys.value);
-    setDoorRowKeys?.(selectedDoorKeys.value);
+    if (!isUpdate.value) {
+      await Promise.all([reloadMemberTable({ page: 1 }), reloadDoorTable({ page: 1 })]);
+      await nextTick();
+      setMemberRowKeys?.(selectedMemberKeys.value);
+      setDoorRowKeys?.(selectedDoorKeys.value);
+    }
     setModalProps({ confirmLoading: false });
   });
 
@@ -387,18 +397,20 @@
       groupName: values.groupName,
       periodId: values.periodId,
       periodName: periodName.value,
-      memberCount: members.length,
-      deviceCount: doors.length,
+      memberCount: isUpdate.value ? (currentRecord.value?.memberCount ?? 0) : members.length,
+      deviceCount: isUpdate.value ? (currentRecord.value?.deviceCount ?? 0) : doors.length,
       createTime,
       remark: values.remark,
-      members: members.map((item) => item.id),
-      devices: doors.map((item) => item.id),
+      // 编辑场景不变更绑定的人员和门；新增场景按选择填充
+      members: isUpdate.value ? (currentRecord.value?.members ?? []) : members.map((item) => item.id),
+      devices: isUpdate.value ? (currentRecord.value?.devices ?? []) : doors.map((item) => item.id),
     };
 
     emit('success', {
       record,
       isUpdate: isUpdate.value,
-      detail: {
+      // 编辑场景不传 detail，避免父层覆盖绑定列表
+      detail: isUpdate.value ? undefined : {
         members,
         devices: doors,
       },

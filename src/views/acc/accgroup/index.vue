@@ -20,6 +20,11 @@
               </a-space>
             </div>
           </template>
+          <template #action="{ record }">
+            <a-space>
+              <a-button type="link" @click="handleEdit(record)">编辑</a-button>
+            </a-space>
+          </template>
         </BasicTable>
       </a-col>
       <a-col :span="16" class="group-right">
@@ -88,7 +93,7 @@
   import { BasicModal, useModal } from '/@/components/Modal';
   import { useMessage } from '/@/hooks/web/useMessage';
   import { useRouter } from 'vue-router';
-  import { listAccGroups, getAccGroupDetail, deleteAccGroup, addAccGroup, editAccGroup, listAccGroupMembers, listAccGroupDevices, addMembersToGroup, removeMembersFromGroup, addDevicesToGroup, removeDevicesFromGroup } from './accgroup.api';
+  import { listAccGroups, getAccGroupDetail, deleteAccGroup, addAccGroup, editAccGroup, editAccGroupNew, listAccGroupMembers, listAccGroupDevices, addMembersToGroup, removeMembersFromGroup, addDevicesToGroup, removeDevicesFromGroup } from './accgroup.api';
   import GroupForm from './groupForm.vue';
   import {
     groupColumns,
@@ -436,11 +441,31 @@
     });
   }
 
-  function handleEdit(record: AccGroupItem) {
-    openModal(true, {
-      isUpdate: true,
-      record,
-    });
+  async function handleEdit(record: AccGroupItem) {
+    try {
+      const vo = await getAccGroupDetail(record.id);
+      const fullRecord: AccGroupItem = {
+        id: vo.id!,
+        groupName: vo.groupName,
+        periodId: vo.periodId,
+        periodName: vo.periodName,
+        memberCount: vo.memberCount ?? 0,
+        deviceCount: vo.deviceCount ?? 0,
+        createTime: vo.createTime ?? '',
+        remark: vo.remark,
+        members: vo.members ?? [],
+        devices: vo.devices ?? [],
+      };
+      openModal(true, {
+        isUpdate: true,
+        record: fullRecord,
+      });
+    } catch (e) {
+      openModal(true, {
+        isUpdate: true,
+        record,
+      });
+    }
   }
 
   function confirmDelete() {
@@ -470,52 +495,70 @@
     const { record, isUpdate, detail } = payload;
     (async () => {
       try {
-        // 将所选“门”转换为设备ID，以匹配后端 acc_group_device 表的 device_id
-        let deviceIds: string[] = [];
-        if (detail?.devices && Array.isArray(detail.devices) && detail.devices.length > 0) {
-          const candidates = detail.devices as any[];
-          const ids: string[] = [];
-          for (const d of candidates) {
-            const sn = String(d?.deviceSn || '');
-            if (sn) {
-              const dev = await getAccDeviceBySn({ sn });
-              if (dev?.id) ids.push(String(dev.id));
-            } else if (d?.id) {
-              // 回退：缺少 deviceSn 时，根据门ID查询详情再映射
-              try {
-                const det = await getDoorDetail({ id: d.id });
-                const door = det?.result ?? det;
-                const sn2 = String(door?.deviceSn || '');
-                if (sn2) {
-                  const dev2 = await getAccDeviceBySn({ sn: sn2 });
-                  if (dev2?.id) ids.push(String(dev2.id));
+        // 编辑：仅提交基础信息，不传 devices/members 字段
+        if (isUpdate) {
+          const voBase = {
+            id: record.id,
+            groupName: record.groupName,
+            periodId: record.periodId,
+            remark: record.remark,
+          };
+          const resp = await editAccGroupNew(voBase);
+          createMessage.success('权限组基础信息已更新');
+          await reloadGroupTable();
+          const resultId = resp?.id ?? record.id!;
+          selectedGroupId.value = resultId;
+          await loadGroupDetail(resultId);
+        } else {
+          // 新增：仍需提交成员与设备的绑定信息
+          // 将所选“门”转换为设备ID，以匹配后端 acc_group_device 表的 device_id
+          let deviceIds: string[] = [];
+          if (detail?.devices && Array.isArray(detail.devices) && detail.devices.length > 0) {
+            const candidates = detail.devices as any[];
+            const ids: string[] = [];
+            for (const d of candidates) {
+              const sn = String(d?.deviceSn || '');
+              if (sn) {
+                const dev = await getAccDeviceBySn({ sn });
+                if (dev?.id) ids.push(String(dev.id));
+              } else if (d?.id) {
+                // 回退：缺少 deviceSn 时，根据门ID查询详情再映射
+                try {
+                  const det = await getDoorDetail({ id: d.id });
+                  const door = det?.result ?? det;
+                  const sn2 = String(door?.deviceSn || '');
+                  if (sn2) {
+                    const dev2 = await getAccDeviceBySn({ sn: sn2 });
+                    if (dev2?.id) ids.push(String(dev2.id));
+                  }
+                } catch (_) {
+                  // ignore
                 }
-              } catch (_) {
-                // ignore
               }
             }
+            // 去重
+            deviceIds = Array.from(new Set(ids));
+          } else {
+            deviceIds = record.devices ?? [];
           }
-          // 去重
-          deviceIds = Array.from(new Set(ids));
-        } else {
-          // 无门详情时，沿用 record.devices（可能是设备ID列表，编辑场景）
-          deviceIds = record.devices ?? [];
+
+          const voAdd = {
+            groupName: record.groupName,
+            periodId: record.periodId,
+            remark: record.remark,
+            members: detail?.members?.map((m: any) => m.id) ?? record.members ?? [],
+            devices: deviceIds,
+          };
+
+          const resp = await addAccGroup(voAdd);
+          createMessage.success('已创建新的权限组');
+          await reloadGroupTable();
+          const resultId = resp?.id ?? resp?.result?.id ?? '';
+          if (resultId) {
+            selectedGroupId.value = resultId;
+            await loadGroupDetail(resultId);
+          }
         }
-
-        const vo = {
-          id: isUpdate ? record.id : undefined,
-          groupName: record.groupName,
-          periodId: record.periodId,
-          remark: record.remark,
-          members: detail?.members?.map((m: any) => m.id) ?? record.members ?? [],
-          devices: deviceIds,
-        };
-
-        const resp = isUpdate ? await editAccGroup(vo) : await addAccGroup(vo);
-        createMessage.success(isUpdate ? '权限组信息已更新' : '已创建新的权限组');
-        await reloadGroupTable();
-        selectedGroupId.value = resp.id!;
-        await loadGroupDetail(resp.id!);
         nextTick(() => {
           refreshAllTables();
           syncSelection();

@@ -7,7 +7,10 @@
       :rowSelection="rowSelection"
     >
       <template #tableTitle>
-        <a-button type="default" @click="handleRefresh">刷新</a-button>
+        <a-space>
+          <a-button type="default" @click="handleRefresh">刷新</a-button>
+          <a-button type="default" danger @click="handleClearAll">清除全部命令</a-button>
+        </a-space>
       </template>
       <template #action="{ record }">
         <a-space>
@@ -29,7 +32,7 @@ import { ref, computed } from 'vue';
 import { BasicTable, useTable } from '/@/components/Table';
 import { BasicDrawer } from '/@/components/Drawer';
 import { useMessage } from '/@/hooks/web/useMessage';
-import { listCommands, deleteCommand, deleteBatchCommands, exportCommands, retryCommand } from './command.api';
+import { listCommands, deleteCommand, deleteBatchCommands, exportCommands, retryCommand, clearAllCommands } from './command.api';
 import { columns, searchFormSchema } from './command.data';
 import CommandForm from './CommandForm.vue';
 import { dateUtil } from '/@/utils/dateUtil';
@@ -137,5 +140,19 @@ function handleExport() {
 
 function handleRefresh() {
   reload();
+}
+
+function handleClearAll() {
+  createConfirm({
+    title: '确认清除全部命令',
+    content: '此操作将删除全部命令记录，且不可恢复。是否继续？',
+    async onOk() {
+      await clearAllCommands();
+      createMessage.success('已清除全部命令');
+      selectedRowKeys.value = [];
+      selectedRows.value = [];
+      reload();
+    },
+  });
 }
 </script>
