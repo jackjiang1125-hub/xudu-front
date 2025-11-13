@@ -27,16 +27,16 @@
           <a-menu @click="onOperationSelect">
             <a-menu-item key="setVerification">设置后台验证参数</a-menu-item>
             <a-menu-item key="setTimezone">设置设备时区</a-menu-item>
-            <a-menu-item key="setRegistrar">设置登记机</a-menu-item>
+            <!-- <a-menu-item key="setRegistrar">设置登记机</a-menu-item>
             <a-menu-item key="setBioThreshold">修改生物识别阈值</a-menu-item>
             <a-menu-item key="setExtendedParams">设置扩展参数</a-menu-item>
             <a-menu-item key="setNtp">NTP服务器设置</a-menu-item>
             <a-menu-item key="replaceDevice">替换设备</a-menu-item>
-            <a-menu-item key="setFaceBackend">设置人脸后台比对参数</a-menu-item>
+            <a-menu-item key="setFaceBackend">设置人脸后台比对参数</a-menu-item> -->
           </a-menu>
         </template>
       </a-dropdown>
-      <a-dropdown trigger="['click']" placement="bottomLeft">
+      <!-- <a-dropdown trigger="['click']" placement="bottomLeft">
         <a-button type="primary" style="margin-left:8px;" preIcon="ant-design:setting-outlined">
           查看与获取
         </a-button>
@@ -49,8 +49,8 @@
             <a-menu-item key="setExtendedParams">查询设备容量</a-menu-item>
           </a-menu>
         </template>
-      </a-dropdown>
-      <a-dropdown trigger="['click']" placement="bottomLeft">
+      </a-dropdown> -->
+      <!-- <a-dropdown trigger="['click']" placement="bottomLeft">
         <a-button type="primary" style="margin-left:8px;" preIcon="ant-design:setting-outlined">
           通讯
         </a-button>
@@ -60,7 +60,7 @@
             <a-menu-item key="setTimezone">切换网络连接</a-menu-item>
           </a-menu>
         </template>
-      </a-dropdown>
+      </a-dropdown> -->
     </template>
     <template #onlineStatus="{ record }">
       <Icon

@@ -1,5 +1,5 @@
 import type { BasicColumn, FormSchema } from '/@/components/Table';
-import { productCategorySelectOptions } from '../productCategory/productCategory.data';
+// import { productCategorySelectOptions } from '../productCategory/productCategory.data';
 
 export type ProductStatus = 'available' | 'disabled';
 export type ProductSalesType = 'single' | 'combo' | 'service';
@@ -135,7 +135,7 @@ export const productSearchFormSchema: FormSchema[] = [
     colProps: { span: 6 },
     componentProps: {
       allowClear: true,
-      options: productCategorySelectOptions,
+      options: null,
     },
   },
   {
