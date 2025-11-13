@@ -2,7 +2,7 @@
   <div :class="prefixCls" class="login-background-img">
     <AppLocalePicker class="absolute top-4 right-4 enter-x xl:text-gray-600" :showText="false"/>
     <AppDarkModeToggle class="absolute top-3 right-7 enter-x" />
-    <div class="aui-logo" v-if="!getIsMobile">
+    <!-- <div class="aui-logo" v-if="!getIsMobile">
       <div>
         <h3>
           <img :src="logoImg" alt="jeecg" />
@@ -11,25 +11,29 @@
     </div>
     <div v-else class="aui-phone-logo">
       <img :src="logoImg" alt="jeecg" />
+    </div> -->
+    <!-- 添加系统标题 -->
+    <div class="system-title">
+      <h1>{{ t('sys.login.signInTitle') }}</h1>
     </div>
     <div v-show="type === 'login'">
       <div class="aui-content">
         <div class="aui-container">
           <div class="aui-form">
-            <div class="aui-image">
+            <!-- <div class="aui-image">
               <div class="aui-image-text">
                 <img :src="adTextImg" />
               </div>
-            </div>
+            </div> -->
             <div class="aui-formBox">
               <div class="aui-formWell">
                 <div class="aui-flex aui-form-nav investment_title">
                   <div class="aui-flex-box" :class="activeIndex === 'accountLogin' ? 'activeNav on' : ''" @click="loginClick('accountLogin')"
                     >{{ t('sys.login.signInFormTitle') }}
                   </div>
-                  <div class="aui-flex-box" :class="activeIndex === 'phoneLogin' ? 'activeNav on' : ''" @click="loginClick('phoneLogin')"
+                  <!-- <div class="aui-flex-box" :class="activeIndex === 'phoneLogin' ? 'activeNav on' : ''" @click="loginClick('phoneLogin')"
                     >{{ t('sys.login.mobileSignInFormTitle') }}
-                  </div>
+                  </div> -->
                 </div>
                 <div class="aui-form-box" style="height: 180px">
                   <a-form ref="loginRef" :model="formData" v-if="activeIndex === 'accountLogin'" @keyup.enter.native="loginHandleClick">
@@ -91,15 +95,15 @@
                     <a-button :loading="loginLoading" class="aui-link-login" type="primary" @click="loginHandleClick">
                       {{ t('sys.login.loginButton') }}</a-button>
                   </div>
-                  <div class="aui-flex">
+                  <!-- <div class="aui-flex">
                     <a class="aui-linek-code aui-flex-box" @click="codeHandleClick">{{ t('sys.login.qrSignInFormTitle') }}</a>
                   </div>
                   <div class="aui-flex">
                     <a class="aui-linek-code aui-flex-box" @click="registerHandleClick">{{ t('sys.login.registerButton') }}</a>
-                  </div>
+                  </div> -->
                 </div>
               </div>
-              <a-form @keyup.enter.native="loginHandleClick">
+              <!-- <a-form @keyup.enter.native="loginHandleClick">
                 <div class="aui-flex aui-third-text">
                   <div class="aui-flex-box aui-third-border">
                     <span>{{ t('sys.login.otherSignIn') }}</span>
@@ -127,7 +131,7 @@
                     </div>
                   </div>
                 </div>
-              </a-form>
+              </a-form> -->
             </div>
           </div>
         </div>
@@ -441,6 +445,18 @@
   :deep(.ant-input:focus) {
     box-shadow: none;
   }
+  // 添加标题样式
+  .system-title {
+    text-align: center;
+    padding-top: 200px;
+    
+    h1 {
+      font-size: 24px;
+      color: #333;
+      margin: 0;
+      font-weight: bold;
+    }
+  }
   .aui-get-code {
     float: right;
     position: relative;
@@ -494,6 +510,9 @@
 @dark-bg: #293146;
 
 html[data-theme='dark'] {
+  .system-title h1 {
+    color: #fff;
+  }
   .@{prefix-cls} {
     background-color: @dark-bg !important;
     background-image: none;

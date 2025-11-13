@@ -3,6 +3,7 @@
   <IndexDef v-if="indexStyle === 1"></IndexDef>
   <IndexBdc v-if="indexStyle == 2"></IndexBdc>
   <IndexTask v-if="indexStyle == 3"></IndexTask>
+  <IndexDataCenter v-if="indexStyle == 4"></IndexDataCenter>
   <div style="width: 100%; text-align: right; margin-top: 20px">
     首页主题：
     <a-radio-group v-model:value="indexStyle">
@@ -10,6 +11,7 @@
       <a-radio :value="1">销量统计</a-radio>
       <a-radio :value="2">业务统计</a-radio>
       <a-radio :value="3">我的任务</a-radio>
+      <a-radio :value="4">数据中心</a-radio>
     </a-radio-group>
   </div>
 </template>
@@ -19,6 +21,7 @@
   import IndexChart from './homePage/IndexChart.vue';
   import IndexBdc from './homePage/IndexBdc.vue';
   import IndexTask from './homePage/IndexTask.vue';
+  import IndexDataCenter from './homePage/IndexDataCenter.vue';
 
-  const indexStyle = ref(0);
+  const indexStyle = ref(4);
 </script>
