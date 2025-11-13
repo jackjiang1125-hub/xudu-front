@@ -1,89 +1,87 @@
 <template>
-  <PageWrapper title="门禁权限组管理" :contentStyle="{ marginLeft: '0' }">
-    <a-row :gutter="16" class="group-layout">
-      <a-col :span="8" class="group-left">
-        <BasicTable @register="handleRegisterGroupTable">
-          <template #tableTitle>
-            <div class="table-header">
-              <a-space>
-                <a-button type="primary" preIcon="ant-design:plus-outlined" @click="handleCreate">
-                  新增权限组
-                </a-button>
-                <a-button
-                  danger
-                  preIcon="ant-design:delete-outlined"
-                  :disabled="!selectedGroupId"
-                  @click="confirmDelete"
-                >
-                  删除权限组
-                </a-button>
-              </a-space>
-            </div>
-          </template>
-          <template #action="{ record }">
+  <a-row :gutter="16" class="group-layout">
+    <a-col :span="8" class="group-left">
+      <BasicTable @register="handleRegisterGroupTable">
+        <template #tableTitle>
+          <div class="table-header">
             <a-space>
-              <a-button type="link" @click="handleEdit(record)">编辑</a-button>
+              <a-button type="primary" preIcon="ant-design:plus-outlined" @click="handleCreate">
+                新增权限组
+              </a-button>
+              <a-button
+                danger
+                preIcon="ant-design:delete-outlined"
+                :disabled="!selectedGroupId"
+                @click="confirmDelete"
+              >
+                删除权限组
+              </a-button>
+            </a-space>
+          </div>
+        </template>
+        <template #action="{ record }">
+          <a-space>
+            <a-button type="link" @click="handleEdit(record)">编辑</a-button>
+          </a-space>
+        </template>
+      </BasicTable>
+    </a-col>
+    <a-col :span="16" class="group-right">
+      <template v-if="currentGroup">
+        <a-card title="权限组概览" class="group-card" :bodyStyle="{ padding: '16px 20px' }">
+          <a-descriptions :column="2" size="small" bordered layout="horizontal">
+            <a-descriptions-item label="权限组名称">{{ currentGroup.groupName }}</a-descriptions-item>
+            <a-descriptions-item label="启用时段">{{ currentGroup.periodName }}</a-descriptions-item>
+            <a-descriptions-item label="人员数量">{{ currentGroup.memberCount }}</a-descriptions-item>
+            <a-descriptions-item label="设备数量">{{ currentGroup.deviceCount }}</a-descriptions-item>
+            <a-descriptions-item label="创建时间">{{ currentGroup.createTime }}</a-descriptions-item>
+            <a-descriptions-item label="备注" :span="2">
+              {{ currentGroup.remark || '暂无备注' }}
+            </a-descriptions-item>
+          </a-descriptions>
+        </a-card>
+
+        <a-card title="人员列表" class="group-card" :headStyle="cardHeadStyle">
+          <template #extra>
+            <a-space>
+              <a-button type="primary" :disabled="!selectedGroupId" @click="openMemberSelect">添加人员</a-button>
+              <a-button danger :disabled="memberSelectedRowKeys.length === 0 || !selectedGroupId" @click="removeSelectedMembers">移除所选</a-button>
             </a-space>
           </template>
-        </BasicTable>
-      </a-col>
-      <a-col :span="16" class="group-right">
-        <template v-if="currentGroup">
-          <a-card title="权限组概览" class="group-card" :bodyStyle="{ padding: '16px 20px' }">
-            <a-descriptions :column="2" size="small" bordered layout="horizontal">
-              <a-descriptions-item label="权限组名称">{{ currentGroup.groupName }}</a-descriptions-item>
-              <a-descriptions-item label="启用时段">{{ currentGroup.periodName }}</a-descriptions-item>
-              <a-descriptions-item label="人员数量">{{ currentGroup.memberCount }}</a-descriptions-item>
-              <a-descriptions-item label="设备数量">{{ currentGroup.deviceCount }}</a-descriptions-item>
-              <a-descriptions-item label="创建时间">{{ currentGroup.createTime }}</a-descriptions-item>
-              <a-descriptions-item label="备注" :span="2">
-                {{ currentGroup.remark || '暂无备注' }}
-              </a-descriptions-item>
-            </a-descriptions>
-          </a-card>
+          <template v-if="currentMembers.length">
+            <BasicTable @register="handleRegisterMemberTable" />
+          </template>
+          <a-empty description="该权限组暂无人员" v-else />
+        </a-card>
 
-          <a-card title="人员列表" class="group-card" :headStyle="cardHeadStyle">
-            <template #extra>
-              <a-space>
-                <a-button type="primary" :disabled="!selectedGroupId" @click="openMemberSelect">添加人员</a-button>
-                <a-button danger :disabled="memberSelectedRowKeys.length === 0 || !selectedGroupId" @click="removeSelectedMembers">移除所选</a-button>
-              </a-space>
-            </template>
-            <template v-if="currentMembers.length">
-              <BasicTable @register="handleRegisterMemberTable" />
-            </template>
-            <a-empty description="该权限组暂无人员" v-else />
-          </a-card>
-
-          <a-card title="门列表" class="group-card" :headStyle="cardHeadStyle">
-            <template #extra>
-              <a-space>
-                <a-button type="primary" :disabled="!selectedGroupId" @click="openDoorSelect">添加门</a-button>
-                <a-button danger :disabled="deviceSelectedRowKeys.length === 0 || !selectedGroupId" @click="removeSelectedDoors">移除所选门</a-button>
-              </a-space>
-            </template>
-            <template v-if="currentDevices.length">
-              <BasicTable @register="handleRegisterDeviceTable" />
-            </template>
-            <a-empty description="该权限组暂无门" v-else />
-          </a-card>
-        </template>
-        <a-empty v-else description="请选择左侧权限组" class="group-empty" />
-      </a-col>
-    </a-row>
-    <GroupForm @register="registerForm" @success="handleFormSuccess" />
-    <!-- 用户选择弹窗（仅业务用户） -->
-    <UserSelectModalBiz :multi="true" @register="registerUserSelectModal" @selected="onMemberSelected" />
-    <!-- 门选择弹窗 -->
-    <BasicModal @register="registerDeviceSelectModal" :title="'选择门'" width="900px" @ok="onDoorSelectOk">
-      <BasicTable
-        @register="registerDeviceSelectTable"
-        :rowSelection="deviceSelectRowSelection"
-        :useSearchForm="true"
-        :formConfig="{ showActionButtonGroup: false }"
-      />
-    </BasicModal>
-  </PageWrapper>
+        <a-card title="门列表" class="group-card" :headStyle="cardHeadStyle">
+          <template #extra>
+            <a-space>
+              <a-button type="primary" :disabled="!selectedGroupId" @click="openDoorSelect">添加门</a-button>
+              <a-button danger :disabled="deviceSelectedRowKeys.length === 0 || !selectedGroupId" @click="removeSelectedDoors">移除所选门</a-button>
+            </a-space>
+          </template>
+          <template v-if="currentDevices.length">
+            <BasicTable @register="handleRegisterDeviceTable" />
+          </template>
+          <a-empty description="该权限组暂无门" v-else />
+        </a-card>
+      </template>
+      <a-empty v-else description="请选择左侧权限组" class="group-empty" />
+    </a-col>
+  </a-row>
+  <GroupForm @register="registerForm" @success="handleFormSuccess" />
+  <!-- 用户选择弹窗（仅业务用户） -->
+  <UserSelectModalBiz :multi="true" @register="registerUserSelectModal" @selected="onMemberSelected" />
+  <!-- 门选择弹窗 -->
+  <BasicModal @register="registerDeviceSelectModal" :title="'选择门'" width="900px" @ok="onDoorSelectOk">
+    <BasicTable
+      @register="registerDeviceSelectTable"
+      :rowSelection="deviceSelectRowSelection"
+      :useSearchForm="true"
+      :formConfig="{ showActionButtonGroup: false }"
+    />
+  </BasicModal>
 </template>
 
 <script lang="ts" setup>

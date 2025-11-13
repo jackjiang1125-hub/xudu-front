@@ -1,23 +1,21 @@
 <template>
-  <PageWrapper title="门禁时间段管理">
-    <BasicTable @register="registerTable">
-      <template #tableTitle>
-        <a-space>
-          <a-button type="primary" preIcon="ant-design:plus-outlined" @click="handleCreate">新增时间段</a-button>
-          <a-button
-            danger
-            preIcon="ant-design:delete-outlined"
-            :disabled="!selectedRowKeys.length"
-            @click="handleBatchDelete"
-          >删除</a-button>
-        </a-space>
-      </template>
-      <template #action="{ record }">
-        <TableAction :actions="getRowActions(record)" />
-      </template>
-    </BasicTable>
-    <TimePeriodModal @register="registerModal" @submit="handleModalSubmit" />
-  </PageWrapper>
+  <BasicTable @register="registerTable">
+    <template #tableTitle>
+      <a-space>
+        <a-button type="primary" preIcon="ant-design:plus-outlined" @click="handleCreate">新增时间段</a-button>
+        <a-button
+          danger
+          preIcon="ant-design:delete-outlined"
+          :disabled="!selectedRowKeys.length"
+          @click="handleBatchDelete"
+        >删除</a-button>
+      </a-space>
+    </template>
+    <template #action="{ record }">
+      <TableAction :actions="getRowActions(record)" />
+    </template>
+  </BasicTable>
+  <TimePeriodModal @register="registerModal" @submit="handleModalSubmit" />
 </template>
 
 <script lang="ts" setup>
