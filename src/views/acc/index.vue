@@ -36,20 +36,20 @@
           </a-menu>
         </template>
       </a-dropdown>
-      <!-- <a-dropdown trigger="['click']" placement="bottomLeft">
+      <a-dropdown trigger="['click']" placement="bottomLeft">
         <a-button type="primary" style="margin-left:8px;" preIcon="ant-design:setting-outlined">
           查看与获取
         </a-button>
         <template #overlay>
           <a-menu @click="onOperationSelect">
-            <a-menu-item key="setVerification">获取设备参数</a-menu-item>
+            <!-- <a-menu-item key="setVerification">获取设备参数</a-menu-item>
             <a-menu-item key="setTimezone">获取人员信息</a-menu-item>
             <a-menu-item key="setRegistrar">获取事件记录</a-menu-item>
-            <a-menu-item key="setBioThreshold">查看设备中门禁规则</a-menu-item>
+            <a-menu-item key="setBioThreshold">查看设备中门禁规则</a-menu-item> -->
             <a-menu-item key="setExtendedParams">查询设备容量</a-menu-item>
           </a-menu>
         </template>
-      </a-dropdown> -->
+      </a-dropdown>
       <!-- <a-dropdown trigger="['click']" placement="bottomLeft">
         <a-button type="primary" style="margin-left:8px;" preIcon="ant-design:setting-outlined">
           通讯
@@ -79,6 +79,7 @@
   <AuthorizeDeviceModal @register="registerAuthorize" @success="reload" />
   <!-- 新增：后台验证参数配置弹窗 -->
   <BackendVerificationModal @register="registerVerification" @success="reload" />
+  <CapacityModal @register="registerCapacity" />
 </template>
 
 <script lang="ts" setup>
@@ -96,6 +97,7 @@
   import { listDevices, type AccDeviceModel, deleteBatchAccDevice, syncAccDeviceTime } from './devce.api';
   import dayjs from 'dayjs';
   import BackendVerificationModal from './backendVerificationModal.vue';
+  import CapacityModal from './capacityModal.vue';
 
   const { createMessage, createConfirm } = useMessage();
 
@@ -105,6 +107,7 @@
   const [registerAuthorize, { openModal: openAuthorize }] = useModal();
   // 新增：后台验证参数弹窗 modal 控制器
   const [registerVerification, { openModal: openVerification }] = useModal();
+  const [registerCapacity, { openModal: openCapacity }] = useModal();
 
   const { tableContext } = useListPage({
     designScope: 'acc-device',
@@ -253,9 +256,15 @@
       case 'setBioThreshold':
         createMessage.info('修改生物识别阈值：' + ids);
         break;
-      case 'setExtendedParams':
-        createMessage.info('设置扩展参数：' + ids);
+      case 'setExtendedParams': {
+        const rows = getSelectRows?.() || [];
+        if (rows.length === 0) {
+          createMessage.warning('请选择设备');
+          break;
+        }
+        openCapacity(true, { records: rows });
         break;
+      }
       case 'setNtp':
         createMessage.info('NTP服务器设置：' + ids);
         break;

@@ -2,7 +2,8 @@
   <BasicTable
     :columns="columns"
     :api="listTransactions"
-    :formConfig="{ schemas: searchFormSchema }"
+    :useSearchForm="true"
+    :formConfig="{ schemas: searchFormSchema, fieldMapToTime: [['logTime', ['logTime_begin','logTime_end'], 'YYYY-MM-DD HH:mm:ss']], showAdvancedButton: true, baseColProps: { span: 12 }, labelWidth: 110 }"
     @register="registerTable"
   >
     <template #tableTitle>

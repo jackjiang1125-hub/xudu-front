@@ -116,7 +116,7 @@
   } from './deviceMonitor.data';
   import { onWebSocket, offWebSocket } from '/@/hooks/web/useWebSocket';
   import { getFileAccessHttpUrl } from '/@/utils/common/compUtils';
-  import { listDoor } from '../accdoor/accdoor.api';
+import { listDoor, remoteOpenDoor, remoteCloseDoor, remoteCancelAlarm, remoteHoldOpen, remoteLockDoor, remoteUnlockDoor, enableTodayAlwaysOpen, disableTodayAlwaysOpen } from '../accdoor/accdoor.api';
   import { listDevices } from '/@/views/acc/devce.api';
 
   const { createMessage } = useMessage();
@@ -214,15 +214,51 @@
     }
   }
 
-  function handleDeviceAction(action: string, device: DoorDevice) {
-    const copy: Record<string, string> = {
-      open: '已发送远程开门指令',
-      close: '已发送远程关门指令',
-      lock: '设备已锁定',
-      unlock: '设备已解锁',
-      fetch: '正在拉取近期日志...',
-    };
-    createMessage.success(`${device.name}: ${copy[action] ?? '操作已触发'}`);
+  async function handleDeviceAction(action: string, device: DoorDevice) {
+    try {
+      const ids = [String(device.id)];
+      switch (action) {
+        case 'open':
+          await remoteOpenDoor(ids);
+          createMessage.success(`${device.name}: 已下发远程开门命令`);
+          break;
+        case 'close':
+          await remoteCloseDoor(ids);
+          createMessage.success(`${device.name}: 已下发远程关门命令`);
+          break;
+        case 'cancelAlarm':
+          await remoteCancelAlarm(ids);
+          createMessage.success(`${device.name}: 已下发取消报警命令`);
+          break;
+        case 'holdOpen':
+          await remoteHoldOpen(ids);
+          createMessage.success(`${device.name}: 已下发远程常开命令`);
+          break;
+        case 'lock':
+          await remoteLockDoor(ids);
+          createMessage.success(`${device.name}: 已下发远程锁定命令`);
+          break;
+        case 'unlock':
+          await remoteUnlockDoor(ids);
+          createMessage.success(`${device.name}: 已下发远程解锁命令`);
+          break;
+        case 'enableTodayAlwaysOpen':
+          await enableTodayAlwaysOpen(ids);
+          createMessage.success(`${device.name}: 已下发启动当天常开时间段命令`);
+          break;
+        case 'disableTodayAlwaysOpen':
+          await disableTodayAlwaysOpen(ids);
+          createMessage.success(`${device.name}: 已下发禁用当天常开时间段命令`);
+          break;
+        case 'fetch':
+          createMessage.success(`${device.name}: 正在拉取近期日志...`);
+          break;
+        default:
+          createMessage.success(`${device.name}: 操作已触发`);
+      }
+    } catch (e) {
+      createMessage.error('操作失败，请稍后重试');
+    }
   }
 
   function showFaceToast(record: EventRecord) {
@@ -440,18 +476,18 @@
     }
   }
 
-  onMounted(() => {
-    refreshEventTable();
-    // 注册WebSocket消息监听
-    onWebSocket(handleWebSocketMessage);
-    // 依赖全局布局建立的 WebSocket 连接，这里不再主动建立，避免重复连接导致断开/重连
-    // 加载门列表
-    fetchDoors();
+onMounted(async () => {
+  refreshEventTable();
+  onWebSocket(handleWebSocketMessage);
+  await fetchDoors();
+  await syncAccDeviceStatus();
+  setTimeout(() => {
     syncAccDeviceStatus();
-    intervalHandle = setInterval(() => {
-      syncAccDeviceStatus();
-    }, refreshSeconds.value * 1000);
-  });
+  }, 1000);
+  intervalHandle = setInterval(() => {
+    syncAccDeviceStatus();
+  }, refreshSeconds.value * 1000);
+});
 
   onBeforeUnmount(() => {
     // 解绑 WebSocket 监听，避免内存泄漏与重复回调

@@ -9,6 +9,8 @@
           <a-button preIcon="ant-design:pause-circle-outlined" @click="handleHoldOpenClick">远程常开</a-button>
           <a-button preIcon="ant-design:lock-outlined" @click="handleLockDoorClick">远程锁定</a-button>
           <a-button preIcon="ant-design:unlock-outlined" @click="handleUnlockDoorClick">远程解锁</a-button>
+          <a-button preIcon="ant-design:calendar-outlined" @click="handleEnableTodayAlwaysOpenClick">启动当天常开时间段</a-button>
+          <a-button danger preIcon="ant-design:stop-outlined" @click="handleDisableTodayAlwaysOpenClick">禁用当天常开时间段</a-button>
         </a-space>
       </template>
       <template #action="{ record }">
@@ -23,7 +25,7 @@
   import { useListPage } from '/@/hooks/system/useListPage';
   import { useModal } from '/@/components/Modal';
   import { columns, searchFormSchema } from './accdoor.data';
-  import { listDoor, deleteDoor, getDoorDetail, remoteOpenDoor, remoteCloseDoor, remoteCancelAlarm, remoteHoldOpen, remoteLockDoor, remoteUnlockDoor } from './accdoor.api';
+  import { listDoor, deleteDoor, getDoorDetail, remoteOpenDoor, remoteCloseDoor, remoteCancelAlarm, remoteHoldOpen, remoteLockDoor, remoteUnlockDoor, enableTodayAlwaysOpen, disableTodayAlwaysOpen } from './accdoor.api';
   import AccDoorModal from './AccDoorModal.vue';
   import { Modal, InputNumber } from 'ant-design-vue';
   import { h, ref } from 'vue';
@@ -177,6 +179,28 @@
       createMessage.success(`已下发远程解锁命令（${ids.length}）`);
     } catch (e) {
       createMessage.error('远程解锁失败，请稍后重试');
+    }
+  }
+
+  async function handleEnableTodayAlwaysOpenClick() {
+    const ids = ensureSelectedIds();
+    if (!ids) return;
+    try {
+      await enableTodayAlwaysOpen(ids);
+      createMessage.success(`已下发启动当天常开时间段命令（${ids.length}）`);
+    } catch (e) {
+      createMessage.error('启动当天常开时间段失败，请稍后重试');
+    }
+  }
+
+  async function handleDisableTodayAlwaysOpenClick() {
+    const ids = ensureSelectedIds();
+    if (!ids) return;
+    try {
+      await disableTodayAlwaysOpen(ids);
+      createMessage.success(`已下发禁用当天常开时间段命令（${ids.length}）`);
+    } catch (e) {
+      createMessage.error('禁用当天常开时间段失败，请稍后重试');
     }
   }
 </script>

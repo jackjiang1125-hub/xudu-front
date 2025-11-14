@@ -85,7 +85,11 @@ export const eventColumns: BasicColumn[] = [
 export const actionDefinitions = [
   { key: 'open', label: '远程开门', statusAllow: ['online'] },
   { key: 'close', label: '远程关门', statusAllow: ['online'] },
-  { key: 'lock', label: '锁定设备', statusAllow: ['online'] },
-  { key: 'unlock', label: '解锁设备', statusAllow: ['online'] },
-  { key: 'fetch', label: '拉取近期日志', statusAllow: ['online', 'offline', 'disabled'] },
+  { key: 'cancelAlarm', label: '取消报警', statusAllow: ['online'] },
+  { key: 'holdOpen', label: '远程常开', statusAllow: ['online'] },
+  { key: 'lock', label: '远程锁定', statusAllow: ['online'] },
+  { key: 'unlock', label: '远程解锁', statusAllow: ['online'] },
+  { key: 'enableTodayAlwaysOpen', label: '启动当天常开时间段', statusAllow: ['online'] },
+  { key: 'disableTodayAlwaysOpen', label: '禁用当天常开时间段', statusAllow: ['online'] },
+  // { key: 'fetch', label: '拉取近期日志', statusAllow: ['online', 'offline', 'disabled'] },
 ];

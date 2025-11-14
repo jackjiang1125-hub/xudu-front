@@ -1,5 +1,6 @@
 import { BasicColumn, FormSchema } from '/@/components/Table';
 import { render } from '/@/utils/common/renderUtils';
+import { dateUtil } from '/@/utils/dateUtil';
 
 export const columns: BasicColumn[] = [
   { title: '设备', dataIndex: 'deviceName', width: 220, customRender: ({ record }) => `${record?.deviceName ?? ''}（${record?.sn ?? ''}）` },
@@ -23,8 +24,11 @@ export const columns: BasicColumn[] = [
 
 export const searchFormSchema: FormSchema[] = [
   { field: 'sn', label: '设备序列号', component: 'JInput' },
+  { field: 'pin', label: '用户PIN', component: 'JInput' },
   { field: 'cardNo', label: '卡号', component: 'JInput' },
-  { field: 'logTime', label: '记录时间', component: 'RangePicker', componentProps: { valueFormat: 'YYYY-MM-DD HH:mm:ss' } },
+  { field: 'eventCode', label: '事件代码', component: 'JDictSelectTag', componentProps: { dictCode: 'acc_event_type' } },
+  { field: 'verifyType', label: '验证方式', component: 'JDictSelectTag', componentProps: { dictCode: 'acc_verify_type' } },
+  { field: 'logTime', label: '记录时间', component: 'RangePicker', defaultValue: [dateUtil().startOf('day'), dateUtil().endOf('day')], componentProps: { showTime: true, valueFormat: 'YYYY-MM-DD HH:mm:ss', placeholder: ['开始时间', '结束时间'] } },
 ];
 
 export const formSchema: FormSchema[] = [

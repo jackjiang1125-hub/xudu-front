@@ -14,6 +14,8 @@ enum Api {
   remoteHoldOpen = '/acc/door/remoteHoldOpen',
   remoteLock = '/acc/door/remoteLock',
   remoteUnlock = '/acc/door/remoteUnlock',
+  enableTodayAlwaysOpen = '/acc/door/enableTodayAlwaysOpen',
+  disableTodayAlwaysOpen = '/acc/door/disableTodayAlwaysOpen',
 }
 
 /**
@@ -110,4 +112,12 @@ export const remoteLockDoor = (ids: string[]) => {
  */
 export const remoteUnlockDoor = (ids: string[]) => {
   return defHttp.post({ url: Api.remoteUnlock, params: { ids } });
+};
+
+export const enableTodayAlwaysOpen = (ids: string[]) => {
+  return defHttp.post({ url: Api.enableTodayAlwaysOpen, params: { ids } });
+};
+
+export const disableTodayAlwaysOpen = (ids: string[]) => {
+  return defHttp.post({ url: Api.disableTodayAlwaysOpen, params: { ids } });
 };

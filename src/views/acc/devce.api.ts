@@ -34,6 +34,7 @@ enum Api {
   deleteBatch = '/acc/device/deleteBatch',
   syncTime = '/acc/device/syncTime',
   setBackendVerification = '/acc/device/setBackendVerification',
+  queryCapacity = '/acc/device/queryCapacity',
 }
 
 export const listDevices = (params?: Record<string, any>) =>
@@ -93,3 +94,6 @@ export const setBackendVerification = (data: {
   enabled: boolean | number;
   offlinePolicy?: 'standard' | 'reject';
 }) => defHttp.post({ url: Api.setBackendVerification, data });
+
+export const queryDeviceCapacity = (sns: string[]) =>
+  defHttp.post({ url: Api.queryCapacity, data: { sns } });
