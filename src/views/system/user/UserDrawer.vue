@@ -41,6 +41,10 @@
     showFooter.value = data?.showFooter ?? true;
     setDrawerProps({ confirmLoading: false, showFooter: showFooter.value });
     isUpdate.value = !!data?.isUpdate;
+    if (!unref(isUpdate)) {
+      const presetType = data?.record?.userType ?? 2;
+      await setFieldsValue({ userType: presetType });
+    }
     if (unref(isUpdate)) {
       rowId.value = data.record.id;
       //租户信息定义成数组
@@ -88,14 +92,44 @@
         field: 'password',
         // 【QQYUN-8324】
         ifShow: ({ values }) => !unref(isUpdate) && values.userType === 1,
+        show: !(data?.record?.__bizOnly === true || data?.record?.userType === 2 || (!unref(isUpdate) && (data?.record?.userType === 2))),
       },
       {
         field: 'confirmPassword',
         ifShow: ({ values }) => !unref(isUpdate) && values.userType === 1,
+        show: !(data?.record?.__bizOnly === true || data?.record?.userType === 2 || (!unref(isUpdate) && (data?.record?.userType === 2))),
+      },
+      {
+        field: 'userType',
+        show: !(data?.record?.__bizOnly === true || data?.record?.userType === 2 || (!unref(isUpdate) && (data?.record?.userType === 2))),
+      },
+      {
+        field: 'username',
+        show: !(data?.record?.__bizOnly === true || data?.record?.userType === 2 || (!unref(isUpdate) && (data?.record?.userType === 2))),
+      },
+      {
+        field: 'telephone',
+        show: !(data?.record?.__bizOnly === true || data?.record?.userType === 2 || (!unref(isUpdate) && (data?.record?.userType === 2))),
+      },
+      {
+        field: 'relTenantIds',
+        show: !(data?.record?.__bizOnly === true || data?.record?.userType === 2 || (!unref(isUpdate) && (data?.record?.userType === 2))),
+      },
+      {
+        field: 'userIdentity',
+        show: !(data?.record?.__bizOnly === true || data?.record?.userType === 2 || (!unref(isUpdate) && (data?.record?.userType === 2))),
+      },
+      {
+        field: 'cardNumber',
+        show: (data?.record?.__bizOnly === true || data?.record?.userType === 2),
+      },
+      {
+        field: 'verifyPassword',
+        show: (data?.record?.__bizOnly === true || data?.record?.userType === 2),
       },
       {
         field: 'selectedroles',
-        show: !data.isRole,
+        show: !data.isRole && !(data?.record?.__bizOnly === true) && data?.record?.userType !== 2,
       },
       {
         field: 'departIds',
@@ -103,17 +137,25 @@
       },
       {
         field: 'selecteddeparts',
-        show: !data?.departDisabled,
+        show: !data?.departDisabled && !(data?.record?.__bizOnly === true) && data?.record?.userType !== 2,
       },
       {
         field: 'selectedroles',
-        show: !data?.departDisabled,
+        show: !data?.departDisabled && !(data?.record?.__bizOnly === true) && data?.record?.userType !== 2,
         //update-begin---author:wangshuai ---date:20230424  for：【issues/4844】多租户模式下，新增或编辑用户，选择角色一栏，角色选项没有做租户隔离------------
         //判断是否为多租户模式
         componentProps:{
           api: data.tenantSaas?getAllRolesList:getAllRolesListNoByTenant
         }
         //update-end---author:wangshuai ---date:20230424  for：【issues/4844】多租户模式下，新增或编辑用户，选择角色一栏，角色选项没有做租户隔离------------
+      },
+      {
+        field: 'email',
+        show: !(data?.record?.__bizOnly === true) && data?.record?.userType !== 2,
+      },
+      {
+        field: 'activitiSync',
+        show: !(data?.record?.__bizOnly === true) && data?.record?.userType !== 2,
       },
       //update-begin---author:wangshuai ---date:20230522  for：【issues/4935】租户用户编辑界面中租户下拉框未过滤，显示当前系统所有的租户------------
       {
