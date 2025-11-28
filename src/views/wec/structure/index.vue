@@ -1,29 +1,32 @@
 <template>
-  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
-    <div>
+  <div class="structure-layout">
+    <div class="structure-col">
       <BasicTable @register="registerBuildingTable">
         <template #toolbar>
           <a-button type="primary" preIcon="ant-design:plus-outlined" @click="openBuildingForm()">新增楼栋</a-button>
+          <a-button type="primary" danger preIcon="ant-design:delete-outlined" :disabled="!getSelectedBuildings().length" @click="handleBatchDeleteBuildings">批量删除</a-button>
         </template>
         <template #action="{ record }">
           <TableAction :actions="getBuildingActions(record)" />
         </template>
       </BasicTable>
     </div>
-    <div>
+    <div class="structure-col">
       <BasicTable @register="registerFloorTable">
         <template #toolbar>
           <a-button type="primary" preIcon="ant-design:plus-outlined" :disabled="!selectedBuildingId" @click="openFloorForm()">新增楼层</a-button>
+          <a-button type="primary" danger preIcon="ant-design:delete-outlined" :disabled="!getSelectedFloors().length" @click="handleBatchDeleteFloors">批量删除</a-button>
         </template>
         <template #action="{ record }">
           <TableAction :actions="getFloorActions(record)" />
         </template>
       </BasicTable>
     </div>
-    <div>
+    <div class="structure-col">
       <BasicTable @register="registerRoomTable">
         <template #toolbar>
           <a-button type="primary" preIcon="ant-design:plus-outlined" :disabled="!selectedFloorId" @click="openRoomForm()">新增房间</a-button>
+          <a-button type="primary" danger preIcon="ant-design:delete-outlined" :disabled="!getSelectedRooms().length" @click="handleBatchDeleteRooms">批量删除</a-button>
         </template>
         <template #action="{ record }">
           <TableAction :actions="getRoomActions(record)" />
@@ -48,7 +51,7 @@ import { BasicTable, useTable, TableAction } from '/@/components/Table';
 import { BasicDrawer } from '/@/components/Drawer';
 import { useMessage } from '/@/hooks/web/useMessage';
 import { buildingColumns, floorColumns, roomColumns, buildingSearchSchema, floorSearchSchema, roomSearchSchema } from './structure.data';
-import { listBuildings, deleteBuilding, type BuildingModel, listFloors, deleteFloor, type FloorModel, listRooms, deleteRoom, type RoomModel } from './structure.api';
+import { listBuildings, deleteBuilding, batchDeleteBuildings, type BuildingModel, listFloors, deleteFloor, batchDeleteFloors, type FloorModel, listRooms, deleteRoom, batchDeleteRooms, type RoomModel } from './structure.api';
 import BuildingForm from './BuildingForm.vue';
 import FloorForm from './FloorForm.vue';
 import RoomForm from './RoomForm.vue';
@@ -62,26 +65,42 @@ const [registerBuildingTable, { reload: reloadBuildings, getSelectRows: getSelec
   api: listBuildings,
   rowKey: 'id',
   columns: buildingColumns,
-  actionColumn: { width: 140, fixed: 'right', title: '操作' },
-  rowSelection: { type: 'radio', onChange: (keys: (string | number)[]) => { selectedBuildingId.value = String(keys[0] || ''); } },
+  rowSelection: { type: 'checkbox', onChange: (keys: (string | number)[]) => { selectedBuildingId.value = String(keys[0] || ''); } },
   formConfig: { labelWidth: 120, schemas: buildingSearchSchema, autoSubmitOnEnter: true, showAdvancedButton: true },
+  scroll: { x: 'max-content' },
+  afterFetch: (list) => list.map((r) => ({
+    ...r,
+    buildingName: typeof r.buildingName === 'string' ? r.buildingName.replace(/\*/g, '') : r.buildingName,
+    buildingCode: typeof r.buildingCode === 'string' ? r.buildingCode.replace(/\*/g, '') : r.buildingCode,
+  })),
 });
 
 const [registerFloorTable, { reload: reloadFloors, getSelectRows: getSelectedFloors }] = useTable({
   api: (params) => listFloors({ ...params, buildingId: selectedBuildingId.value }),
   rowKey: 'id',
   columns: floorColumns,
-  actionColumn: { width: 140, fixed: 'right', title: '操作' },
-  rowSelection: { type: 'radio', onChange: (keys: (string | number)[]) => { selectedFloorId.value = String(keys[0] || ''); } },
+  rowSelection: { type: 'checkbox', onChange: (keys: (string | number)[]) => { selectedFloorId.value = String(keys[0] || ''); } },
   formConfig: { labelWidth: 120, schemas: floorSearchSchema, autoSubmitOnEnter: true, showAdvancedButton: true },
+  scroll: { x: 'max-content' },
+  afterFetch: (list) => list.map((r) => ({
+    ...r,
+    floorName: typeof r.floorName === 'string' ? r.floorName.replace(/\*/g, '') : r.floorName,
+    floorCode: typeof r.floorCode === 'string' ? r.floorCode.replace(/\*/g, '') : r.floorCode,
+  })),
 });
 
-const [registerRoomTable, { reload: reloadRooms }] = useTable({
+const [registerRoomTable, { reload: reloadRooms, getSelectRows: getSelectedRooms }] = useTable({
   api: (params) => listRooms({ ...params, floorId: selectedFloorId.value }),
   rowKey: 'id',
   columns: roomColumns,
-  actionColumn: { width: 140, fixed: 'right', title: '操作' },
+  rowSelection: { type: 'checkbox' },
   formConfig: { labelWidth: 120, schemas: roomSearchSchema, autoSubmitOnEnter: true, showAdvancedButton: true },
+  scroll: { x: 'max-content' },
+  afterFetch: (list) => list.map((r) => ({
+    ...r,
+    roomName: typeof r.roomName === 'string' ? r.roomName.replace(/\*/g, '') : r.roomName,
+    roomCode: typeof r.roomCode === 'string' ? r.roomCode.replace(/\*/g, '') : r.roomCode,
+  })),
 });
 
 watch(selectedBuildingId, () => { selectedFloorId.value = ''; reloadFloors(); reloadRooms(); });
@@ -113,7 +132,32 @@ function handleDeleteRoom(record: RoomModel) {
   createConfirm({ title: '确认删除', content: `确定要删除房间【${record.roomName}】吗？`, async onOk() { await deleteRoom(String(record.id)); createMessage.success('删除成功'); reloadRooms(); } });
 }
 
+async function handleBatchDeleteBuildings() {
+  const rows = getSelectedBuildings();
+  if (!rows.length) return;
+  const ids = rows.map((r: any) => String(r.id));
+  createConfirm({ title: '确认删除', content: '确定删除选中的楼栋及其楼层、房间？', async onOk() { await batchDeleteBuildings(ids); createMessage.success('删除成功'); reloadBuildings(); reloadFloors(); reloadRooms(); } });
+}
+
+async function handleBatchDeleteFloors() {
+  const rows = getSelectedFloors();
+  if (!rows.length) return;
+  const ids = rows.map((r: any) => String(r.id));
+  createConfirm({ title: '确认删除', content: '确定删除选中的楼层及其房间？', async onOk() { await batchDeleteFloors(ids); createMessage.success('删除成功'); reloadFloors(); reloadRooms(); } });
+}
+
+async function handleBatchDeleteRooms() {
+  const rows = getSelectedRooms();
+  if (!rows.length) return;
+  const ids = rows.map((r: any) => String(r.id));
+  createConfirm({ title: '确认删除', content: '确定删除选中的房间？', async onOk() { await batchDeleteRooms(ids); createMessage.success('删除成功'); reloadRooms(); } });
+}
+
 function getBuildingActions(record: BuildingModel) { return [ { label: '编辑', onClick: () => openBuildingForm(record) }, { label: '删除', color: 'error', onClick: () => handleDeleteBuilding(record) } ]; }
 function getFloorActions(record: FloorModel) { return [ { label: '编辑', onClick: () => openFloorForm(record) }, { label: '删除', color: 'error', onClick: () => handleDeleteFloor(record) } ]; }
 function getRoomActions(record: RoomModel) { return [ { label: '编辑', onClick: () => openRoomForm(record) }, { label: '删除', color: 'error', onClick: () => handleDeleteRoom(record) } ]; }
 </script>
+<style scoped>
+.structure-layout { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+.structure-col { min-width: 0; }
+</style>

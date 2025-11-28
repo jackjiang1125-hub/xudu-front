@@ -137,7 +137,7 @@
       },
       {
         field: 'selecteddeparts',
-        show: !data?.departDisabled && !(data?.record?.__bizOnly === true) && data?.record?.userType !== 2,
+        show: !data?.departDisabled,
       },
       {
         field: 'selectedroles',

@@ -27,7 +27,6 @@ const [registerTable, { reload }] = useTable({
   api: listLocations,
   rowKey: 'id',
   columns,
-  actionColumn: { width: 140, fixed: 'right', title: '操作' },
   formConfig: { labelWidth: 120, schemas: searchFormSchema, autoSubmitOnEnter: true, showAdvancedButton: true },
 });
 

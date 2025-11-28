@@ -16,6 +16,7 @@ const { createMessage } = useMessage();
 const [registerForm, { setFieldsValue, resetFields }] = useForm({
   schemas: buildingFormSchema,
   showActionButtonGroup: true,
+  submitButtonOptions: { text: '保存', preIcon: '' },
   actionColOptions: { span: 24 },
 });
 

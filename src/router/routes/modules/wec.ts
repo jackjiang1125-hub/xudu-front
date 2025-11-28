@@ -13,21 +13,15 @@ const wec: AppRouteModule = {
   },
   children: [
     {
-      path: 'basic/area',
-      name: 'WecArea',
-      component: () => import('/@/views/wec/basic/area/index.vue'),
-      meta: { title: '区域管理' },
-    },
-    {
       path: 'basic/structure',
       name: 'WecStructure',
-      component: () => import('/@/views/wec/basic/structure/index.vue'),
+      component: () => import('/@/views/wec/structure/index.vue'),
       meta: { title: '楼栋/楼层/房间' },
     },
     {
       path: 'basic/location',
       name: 'WecLocation',
-      component: () => import('/@/views/wec/basic/location/index.vue'),
+      component: () => import('/@/views/wec/location/index.vue'),
       meta: { title: '设备安装位置管理' },
     },
     {

@@ -13,29 +13,37 @@
   </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, nextTick } from 'vue';
 import { BasicTable, useTable, TableAction } from '/@/components/Table';
 import { BasicDrawer } from '/@/components/Drawer';
 import { useMessage } from '/@/hooks/web/useMessage';
-import { columns, searchFormSchema } from './rate.data';
+import { columns, searchFormSchema, initRateTypeDict } from './rate.data';
 import RateTemplateForm from './RateTemplateForm.vue';
 import { listRateTemplates, deleteRateTemplate, type RateTemplateModel } from './rate.api';
 
 const { createMessage, createConfirm } = useMessage();
 
+initRateTypeDict().then(() => reload());
+
 const [registerTable, { reload }] = useTable({
   api: listRateTemplates,
   rowKey: 'id',
   columns,
-  actionColumn: { width: 140, fixed: 'right', title: '操作' },
+  actionColumn: { width: 140, fixed: 'right', title: '操作', slots: { customRender: 'action' } },
   formConfig: { labelWidth: 120, schemas: searchFormSchema, autoSubmitOnEnter: true, showAdvancedButton: true },
 });
 
 const drawerVisible = ref(false);
 const currentRecord = ref<Record<string, any>>({});
 
-function handleAdd() { currentRecord.value = {}; drawerVisible.value = true; }
-function handleEdit(record: RateTemplateModel) { currentRecord.value = { ...record }; drawerVisible.value = true; }
+function handleAdd() {
+  drawerVisible.value = true;
+  nextTick(() => { currentRecord.value = {}; });
+}
+function handleEdit(record: RateTemplateModel) {
+  drawerVisible.value = true;
+  nextTick(() => { currentRecord.value = { ...record }; });
+}
 function handleSaved() { drawerVisible.value = false; reload(); }
 
 function handleDelete(record: RateTemplateModel) {

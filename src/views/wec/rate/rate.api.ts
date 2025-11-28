@@ -16,8 +16,13 @@ export type RateTemplateModel = {
   id?: string;
   templateName?: string;
   type?: string;
-  category?: string;
-  userType?: string;
-  season?: string;
-  rules?: string;
+  freeSeconds?: number;
+  workMode?: 'real_time' | 'pre_deduct' | 'per_count';
+  deductionMethod?: 'timed' | 'pulse';
+  realTimeAmount?: number;
+  realTimeDuration?: number;
+  preDeductTime?: number;
+  preDeductRate?: number;
+  preDeductAmount?: number;
+  perTimeDuration?: number;
 };

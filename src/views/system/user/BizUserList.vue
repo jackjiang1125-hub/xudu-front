@@ -1,11 +1,16 @@
 <template>
   <div>
-    <BasicTable @register="registerTable" :rowSelection="rowSelection">
-      <template #tableTitle>
-        <a-button @click="reload">刷新</a-button>
-        <a-button type="primary" preIcon="ant-design:plus-outlined" @click="handleCreate">新增</a-button>
-        <a-button type="primary" preIcon="ant-design:export-outlined" @click="onExportXls" :disabled="isDisabledAuth('system:user:export')">导出</a-button>
-        <a-dropdown>
+    <a-row type="flex" :gutter="10">
+      <a-col :xl="5" :lg="24" :md="24" style="margin-bottom: 10px">
+        <DeptFilterTree :autoSelectFirst="false" :allowUnselect="true" @select="onDeptSelect" />
+      </a-col>
+      <a-col :xl="19" :lg="24" :md="24" style="margin-bottom: 10px">
+        <BasicTable @register="registerTable" :rowSelection="rowSelection">
+          <template #tableTitle>
+            <a-button @click="reload">刷新</a-button>
+            <a-button type="primary" preIcon="ant-design:plus-outlined" @click="handleCreate">新增</a-button>
+            <a-button type="primary" preIcon="ant-design:export-outlined" @click="onExportXls" :disabled="isDisabledAuth('system:user:export')">导出</a-button>
+            <a-dropdown>
           <template #overlay>
             <a-menu>
               <a-menu-item key="biz-import">
@@ -48,20 +53,23 @@
       <template #action="{ record }">
         <TableAction :actions="getTableAction(record)" :dropDownActions="getDropDownAction(record)" />
       </template>
-    </BasicTable>
-    <UserDrawer @register="registerDrawer" @success="reload" />
-    <PasswordModal @register="registerPasswordModal" @success="reload" />
-    <UserAgentModal @register="registerAgentModal" @success="reload" />
-    <UserRecycleBinModal @register="registerModal" @success="reload" />
-    <UserQuitAgentModal @register="registerQuitAgentModal" @success="reload" />
-    <UserQuitModal @register="registerQuitModal" @success="reload" />
-    <BizPhotoImportModal ref="bizPhotoModalRef" @success="reload" />
+        </BasicTable>
+        <UserDrawer @register="registerDrawer" @success="reload" />
+        <PasswordModal @register="registerPasswordModal" @success="reload" />
+        <UserAgentModal @register="registerAgentModal" @success="reload" />
+        <UserRecycleBinModal @register="registerModal" @success="reload" />
+        <UserQuitAgentModal @register="registerQuitAgentModal" @success="reload" />
+        <UserQuitModal @register="registerQuitModal" @success="reload" />
+        <BizPhotoImportModal ref="bizPhotoModalRef" @success="reload" />
+      </a-col>
+    </a-row>
   </div>
 </template>
 
 <script lang="ts" name="biz-user-list" setup>
 import { ref, unref } from 'vue';
 import { BasicTable, TableAction, ActionItem, BasicColumn } from '/@/components/Table';
+import DeptFilterTree from '/@/views/system/depart/components/DeptFilterTree.vue';
 import UserDrawer from './UserDrawer.vue';
 import UserRecycleBinModal from './UserRecycleBinModal.vue';
 import PasswordModal from './PasswordModal.vue';
@@ -87,6 +95,8 @@ const [registerAgentModal, { openModal: openAgentModal }] = useModal();
 const [registerQuitAgentModal, { openModal: openQuitAgentModal }] = useModal();
 const [registerQuitModal, { openModal: openQuitModal }] = useModal();
 const bizPhotoModalRef = ref<any>(null);
+const selectedDeptId = ref<string | null>(null);
+const includeSubDepts = ref<boolean>(true);
 
 const workNoColumn: BasicColumn = { title: '工号', dataIndex: 'workNo', width: 100 };
 const bizColumns: BasicColumn[] = [workNoColumn, ...columns.filter((c) => !['username', 'sex', 'birthday', 'departIds_dictText'].includes(c.dataIndex as string))];
@@ -104,7 +114,11 @@ const { tableContext, onExportXls } = useListPage({
     actionColumn: { width: 120 },
     beforeFetch: (params) => {
       displayColumns.value = bizColumns;
-      return Object.assign({ column: 'createTime', order: 'desc' }, params, { userType: 2 });
+      Object.assign(params, { column: 'createTime', order: 'desc', userType: 2 });
+      if (selectedDeptId.value) {
+        Object.assign(params, { parentDeptId: selectedDeptId.value, includeSubDepts: includeSubDepts.value });
+      }
+      return params;
     },
     afterFetch: (items) => {
       if (Array.isArray(items)) {
@@ -113,7 +127,7 @@ const { tableContext, onExportXls } = useListPage({
       return items;
     },
   },
-  exportConfig: { name: '业务用户列表', url: getExportUrl, params: () => ({ userType: 2 }) },
+  exportConfig: { name: '业务用户列表', url: getExportUrl, params: () => (selectedDeptId.value ? { userType: 2, parentDeptId: selectedDeptId.value, includeSubDepts: includeSubDepts.value } : { userType: 2 }) },
 });
 
 const [registerTable, { reload }, { rowSelection, selectedRows, selectedRowKeys }] = tableContext;
@@ -127,6 +141,11 @@ function handleBizUserPhotoImport() {
 }
 function downloadBizUserTemplate() {
   return handleExportXls('业务用户导入模板', getBizUserTemplateUrl, {});
+}
+
+function onDeptSelect(data) {
+  selectedDeptId.value = data && data.id ? data.id : null;
+  reload();
 }
 
 function handleCreate() {
