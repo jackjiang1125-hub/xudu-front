@@ -62,10 +62,24 @@ export const formSchema: FormSchema[] = [
     componentProps: { min: 0, placeholder: '单位秒' },
   },
   {
-    field: 'workMode',
-    label: '设置工作模式',
+    field: 'deductionMethod',
+    label: '扣费方式',
     component: 'RadioGroup',
     required: true,
+    defaultValue: 'timed',
+    componentProps: {
+      options: [
+        { label: '计时', value: 'timed' },
+        { label: '计量（脉冲）', value: 'pulse' },
+      ],
+    },
+  },
+  {
+    field: 'workMode',
+    label: '工作模式',
+    component: 'RadioGroup',
+    required: true,
+    defaultValue: 'real_time',
     componentProps: {
       options: [
         { label: '实时扣费', value: 'real_time' },
@@ -74,63 +88,70 @@ export const formSchema: FormSchema[] = [
       ],
     },
   },
-  {
-    field: 'deductionMethod',
-    label: '扣费方式',
-    component: 'RadioGroup',
-    required: true,
-    componentProps: {
-      options: [
-        { label: '计时', value: 'timed' },
-        { label: '脉冲', value: 'pulse' },
-      ],
-    },
-  },
+  // 实时扣费字段
   {
     field: 'realTimeAmount',
-    label: '实时扣费金额',
+    label: '扣费金额(元)',
     component: 'InputNumber',
     required: true,
     ifShow: ({ values }) => values.workMode === 'real_time',
-    componentProps: { min: 0 },
+    componentProps: { min: 0.01, step: 0.01, placeholder: '如：0.1元' },
   },
   {
     field: 'realTimeDuration',
-    label: '实时扣费时间(秒)',
+    label: '时间/脉冲数',
     component: 'InputNumber',
     required: true,
     ifShow: ({ values }) => values.workMode === 'real_time',
-    componentProps: { min: 1, placeholder: '单位秒' },
+    componentProps: ({ formModel }) => ({
+      min: 1,
+      step: 1,
+      placeholder: formModel.deductionMethod === 'pulse' ? '单位：个脉冲' : '单位：秒',
+      addonAfter: formModel.deductionMethod === 'pulse' ? '脉冲' : '秒',
+    }),
   },
+  // 预扣费字段
   {
-    field: 'preDeductTime',
-    label: '预扣费时间(秒)',
+    field: 'preDeductAmount',
+    label: '预扣金额(元)',
     component: 'InputNumber',
     required: true,
     ifShow: ({ values }) => values.workMode === 'pre_deduct',
-    componentProps: { min: 1, placeholder: '单位秒' },
+    componentProps: { min: 0.01, step: 0.01, placeholder: '如：5.00元' },
   },
   {
     field: 'preDeductRate',
-    label: '费率',
+    label: '费率(元/单位)',
     component: 'InputNumber',
     required: true,
     ifShow: ({ values }) => values.workMode === 'pre_deduct',
-    componentProps: { min: 0 },
+    componentProps: ({ formModel }) => ({
+      min: 0.0001,
+      step: 0.01,
+      placeholder: formModel.deductionMethod === 'pulse' ? '如：0.05元/脉冲' : '如：0.05元/秒',
+      addonAfter: formModel.deductionMethod === 'pulse' ? '元/脉冲' : '元/秒',
+    }),
   },
+  // 计次字段
   {
-    field: 'preDeductAmount',
-    label: '预扣费金额',
-    component: 'InputNumber',
-    ifShow: ({ values }) => values.workMode === 'pre_deduct',
-    componentProps: { disabled: true },
-  },
-  {
-    field: 'perTimeDuration',
-    label: '计次时间(秒)',
+    field: 'perCountAmount',
+    label: '单次金额(元)',
     component: 'InputNumber',
     required: true,
     ifShow: ({ values }) => values.workMode === 'per_count',
-    componentProps: { min: 1, placeholder: '单位秒' },
+    componentProps: { min: 0.01, step: 0.01, placeholder: '如：2.00元' },
+  },
+  {
+    field: 'perTimeDuration',
+    label: '单次用水量/时长',
+    component: 'InputNumber',
+    required: true,
+    ifShow: ({ values }) => values.workMode === 'per_count',
+    componentProps: ({ formModel }) => ({
+      min: 1,
+      step: 1,
+      placeholder: formModel.deductionMethod === 'pulse' ? '单位：个脉冲' : '单位：秒',
+      addonAfter: formModel.deductionMethod === 'pulse' ? '脉冲' : '秒',
+    }),
   },
 ];

@@ -30,11 +30,6 @@ watch(() => props.record, (val) => {
 }, { immediate: true });
 
 async function handleSubmit(values: Record<string, any>) {
-  if (values.workMode === 'pre_deduct') {
-    const t = Number(values.preDeductTime || 0);
-    const r = Number(values.preDeductRate || 0);
-    values.preDeductAmount = t * r;
-  }
   if (values.id) {
     await editRateTemplate(values);
     createMessage.success('编辑成功');
