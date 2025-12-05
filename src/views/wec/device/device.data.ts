@@ -1,15 +1,16 @@
 import type { BasicColumn, FormSchema } from '/@/components/Table';
-import { render } from '/@/utils/common/renderUtils';
 import { listRateTemplates } from '/@/views/wec/rate/rate.api';
+import { listLocations } from '/@/views/wec/location/location.api';
 
 export const columns: BasicColumn[] = [
   { title: '设备名称', dataIndex: 'deviceName', width: 160 },
-  { title: '设备类型', dataIndex: 'deviceType', width: 120, customRender: ({ text }) => render.renderDict(text, 'wec_device_type') },
-  { title: '机号', dataIndex: 'sn', width: 140 },
-  { title: '唯一ID', dataIndex: 'uniqueId', width: 160 },
-  { title: '安装位置', dataIndex: 'installLocation', width: 180 },
-  { title: '费率模板', dataIndex: 'rateTemplateName', width: 160 },
-  { title: '状态', dataIndex: 'status', width: 100, customRender: ({ text }) => render.renderDict(text, 'device_status', true) },
+  { title: '在线', dataIndex: 'onlineStatus', width: 80, slots: { customRender: 'onlineStatus' } },
+  { title: '机号（系列号）', dataIndex: 'sn', width: 140 },
+  { title: '安装位置', dataIndex: 'installLocation_dictText', width: 180 },
+  { title: '费率模板', dataIndex: 'rateTemplateId_dictText', width: 160 },
+  { title: '状态', dataIndex: 'status', width: 100, customRender: ({ text }) => {
+    return text === '1' ? '启用' : '停用';
+  } },
 ];
 
 export const searchFormSchema: FormSchema[] = [
@@ -21,10 +22,8 @@ export const searchFormSchema: FormSchema[] = [
 export const formSchema: FormSchema[] = [
   { field: 'id', component: 'Input', show: false },
   { field: 'deviceName', label: '设备名称', component: 'JInput', required: true },
-  { field: 'deviceType', label: '设备类型', component: 'JDictSelectTag', required: true, componentProps: { dictCode: 'wec_device_type' } },
-  { field: 'sn', label: '机号', component: 'JInput', required: true },
-  { field: 'uniqueId', label: '唯一ID', component: 'JInput' },
-  { field: 'installLocation', label: '安装位置', component: 'JInput' },
+  { field: 'sn', label: '机号', component: 'InputNumber', required: true, componentProps: { min: 1, max: 65535, precision: 0 } },
+  { field: 'installLocation', label: '安装位置', component: 'ApiSelect', componentProps: { api: listLocations, labelField: 'locationName', valueField: 'id' } },
   { field: 'rateTemplateId', label: '费率模板', component: 'ApiSelect', componentProps: { api: listRateTemplates, labelField: 'templateName', valueField: 'id' } },
   { field: 'maxTimeMinutes', label: '最大时长(分钟)', component: 'InputNumber', componentProps: { min: 1 } },
   { field: 'maxVolumeLiters', label: '最大计量(升/度)', component: 'InputNumber', componentProps: { min: 0 } },

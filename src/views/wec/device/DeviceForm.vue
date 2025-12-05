@@ -17,15 +17,21 @@ const [registerForm, { setFieldsValue, resetFields }] = useForm({
   schemas: formSchema,
   showActionButtonGroup: true,
   actionColOptions: { span: 24 },
+  submitButtonOptions: { text: '保存' },
 });
 
-watch(() => props.record, (val) => {
-  if (val && (val as any).id) setFieldsValue(val);
-  else resetFields();
-}, { immediate: true });
+watch(() => props.record, async (val) => {
+  await resetFields();
+  if (val && (val as any).id) {
+    await setFieldsValue(val);
+  }
+}, { immediate: true, deep: true });
 
 async function handleSubmit(values: Record<string, any>) {
-  if (values.id) {
+  // 确保编辑时 ID 存在
+  const id = values.id || props.record?.id;
+  if (id) {
+    values.id = id;
     await editWecDevice(values);
     createMessage.success('编辑成功');
   } else {

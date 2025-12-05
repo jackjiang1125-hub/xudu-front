@@ -8,7 +8,9 @@ enum Api {
   start = '/wec/device/control/start',
   stop = '/wec/device/control/stop',
   restart = '/wec/device/control/restart',
+  factoryReset = '/wec/device/control/factoryReset',
   syncTime = '/wec/device/control/syncTime',
+  searchPending = '/wec/device/searchPending',
 }
 
 export const listWecDevices = (params?: Record<string, any>) => defHttp.get({ url: Api.list, params });
@@ -19,7 +21,10 @@ export const deleteWecDevice = (id: string) => defHttp.delete({ url: Api.delete,
 export const startDevice = (sns: string[]) => defHttp.post({ url: Api.start, params: { sns } });
 export const stopDevice = (sns: string[]) => defHttp.post({ url: Api.stop, params: { sns } });
 export const restartDevice = (sns: string[]) => defHttp.post({ url: Api.restart, params: { sns } });
+export const factoryResetDevice = (sns: string[]) => defHttp.post({ url: Api.factoryReset, params: { sns } });
 export const syncDeviceTime = (sns: string[]) => defHttp.post({ url: Api.syncTime, params: { sns } });
+
+export const searchPendingDevices = (keyword?: string) => defHttp.get({ url: Api.searchPending, params: { keyword } });
 
 export type WecDeviceModel = {
   id?: string;

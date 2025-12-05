@@ -53,19 +53,7 @@ const wec: AppRouteModule = {
       name: 'WecTransaction',
       component: () => import('/@/views/wec/transaction/index.vue'),
       meta: { title: '交易管理' },
-    },
-    {
-      path: 'analysis',
-      name: 'WecAnalysis',
-      component: () => import('/@/views/wec/analysis/index.vue'),
-      meta: { title: '统计分析' },
-    },
-    {
-      path: 'system',
-      name: 'WecSystem',
-      component: () => import('/@/views/wec/system/index.vue'),
-      meta: { title: '系统管理' },
-    },
+    }
   ],
 };
 
