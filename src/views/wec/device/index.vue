@@ -17,7 +17,7 @@
       </a-dropdown>
     </template>
     <template #action="{ record }">
-      <TableAction :actions="getTableActions(record)" />
+      <TableAction :actions="getTableActions(record)" :dropDownActions="getDropDownActions(record)" />
     </template>
     <template #onlineStatus="{ record }">
       <Icon
@@ -63,6 +63,19 @@
     </div>
   </BasicModal>
 
+  <BasicModal @register="registerUpdateSnModal" title="修改设备号" width="500px" @ok="handleConfirmUpdateSn">
+    <div style="padding: 20px">
+      <a-alert message="警告" description="修改设备号会导致设备离线约1分钟，期间无法接收指令。请确保新机号与设备硬件设置一致。" type="warning" show-icon style="margin-bottom: 16px" />
+      <a-form layout="vertical">
+        <a-form-item label="原机号">
+          <a-input v-model:value="updateSnForm.oldSn" disabled />
+        </a-form-item>
+        <a-form-item label="新机号" required>
+          <a-input-number v-model:value="updateSnForm.newSn" :min="1" :max="65535" :precision="0" style="width: 100%" placeholder="请输入新机号(1-65535)" />
+        </a-form-item>
+      </a-form>
+    </div>
+  </BasicModal>
 </template>
 
 <script setup lang="ts">
@@ -73,7 +86,7 @@ import { BasicModal, useModal } from '/@/components/Modal';
 import { useMessage } from '/@/hooks/web/useMessage';
 import { columns, searchFormSchema } from './device.data';
 import DeviceForm from './DeviceForm.vue';
-import { listWecDevices, deleteWecDevice, startDevice, stopDevice, restartDevice, factoryResetDevice, syncDeviceTime, searchPendingDevices, addWecDevice, type WecDeviceModel } from './device.api';
+import { listWecDevices, deleteWecDevice, startDevice, stopDevice, restartDevice, factoryResetDevice, syncDeviceTime, searchPendingDevices, addWecDevice, editWecDevice, type WecDeviceModel } from './device.api';
 import { BasicColumn } from '/@/components/Table';
 import { Icon } from '/@/components/Icon';
 import dayjs from 'dayjs';
@@ -127,6 +140,42 @@ function getTableActions(record: WecDeviceModel) {
     { label: '编辑', onClick: handleEdit.bind(null, record) },
     { label: '删除', color: 'error', onClick: handleDelete.bind(null, record) },
   ];
+}
+
+function getDropDownActions(record: WecDeviceModel) {
+  return [
+    { label: '修改机号', onClick: handleOpenUpdateSn.bind(null, record) }
+  ];
+}
+
+const [registerUpdateSnModal, { openModal: openUpdateSnModal, closeModal: closeUpdateSnModal }] = useModal();
+const updateSnForm = ref({ id: '', oldSn: '', newSn: null as number | null });
+
+function handleOpenUpdateSn(record: any) {
+  updateSnForm.value = {
+    id: record.id,
+    oldSn: record.sn,
+    newSn: null
+  };
+  openUpdateSnModal(true);
+}
+
+async function handleConfirmUpdateSn() {
+  if (!updateSnForm.value.newSn) {
+    createMessage.warning('请输入新机号');
+    return;
+  }
+  try {
+    await editWecDevice({
+      id: updateSnForm.value.id,
+      sn: String(updateSnForm.value.newSn)
+    });
+    createMessage.success('指令已下发，请等待设备重连');
+    closeUpdateSnModal();
+    reload();
+  } catch (e) {
+    createMessage.error('修改失败');
+  }
 }
 
 async function onOperationSelect({ key }: any) {

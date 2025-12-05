@@ -22,7 +22,7 @@ export const searchFormSchema: FormSchema[] = [
 export const formSchema: FormSchema[] = [
   { field: 'id', component: 'Input', show: false },
   { field: 'deviceName', label: '设备名称', component: 'JInput', required: true },
-  { field: 'sn', label: '机号', component: 'InputNumber', required: true, componentProps: { min: 1, max: 65535, precision: 0 } },
+  { field: 'sn', label: '机号', component: 'InputNumber', required: true, dynamicDisabled: ({ values }) => !!values.id },
   { field: 'installLocation', label: '安装位置', component: 'ApiSelect', componentProps: { api: listLocations, labelField: 'locationName', valueField: 'id' } },
   { field: 'rateTemplateId', label: '费率模板', component: 'ApiSelect', componentProps: { api: listRateTemplates, labelField: 'templateName', valueField: 'id' } },
   { field: 'maxTimeMinutes', label: '最大时长(分钟)', component: 'InputNumber', componentProps: { min: 1 } },
