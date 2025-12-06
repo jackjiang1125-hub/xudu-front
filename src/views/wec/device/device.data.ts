@@ -11,6 +11,11 @@ export const columns: BasicColumn[] = [
   { title: '状态', dataIndex: 'status', width: 100, customRender: ({ text }) => {
     return text === '1' ? '启用' : '停用';
   } },
+  { title: '名单模式', dataIndex: 'namelistMode', width: 100, customRender: ({ text }) => {
+    if (text === 1) return '黑名单';
+    if (text === 0) return '白名单';
+    return '未设置';
+  } },
 ];
 
 export const searchFormSchema: FormSchema[] = [
@@ -25,8 +30,8 @@ export const formSchema: FormSchema[] = [
   { field: 'sn', label: '机号', component: 'InputNumber', required: true, dynamicDisabled: ({ values }) => !!values.id },
   { field: 'installLocation', label: '安装位置', component: 'ApiSelect', componentProps: { api: listLocations, labelField: 'locationName', valueField: 'id' } },
   { field: 'rateTemplateId', label: '费率模板', component: 'ApiSelect', componentProps: { api: listRateTemplates, labelField: 'templateName', valueField: 'id' } },
-  { field: 'maxTimeMinutes', label: '最大时长(分钟)', component: 'InputNumber', componentProps: { min: 1 } },
-  { field: 'maxVolumeLiters', label: '最大计量(升/度)', component: 'InputNumber', componentProps: { min: 0 } },
-  { field: 'qrEnabled', label: '二维码启用', component: 'JSwitch', defaultValue: '1', componentProps: { options: ['1','0'], labelOptions: ['启用','禁用'] } },
-  { field: 'allowOffline', label: '允许脱机', component: 'JSwitch', defaultValue: '0', componentProps: { options: ['1','0'], labelOptions: ['是','否'] } },
+  // { field: 'maxTimeMinutes', label: '最大时长(分钟)', component: 'InputNumber', componentProps: { min: 1 } },
+  // { field: 'maxVolumeLiters', label: '最大计量(升/度)', component: 'InputNumber', componentProps: { min: 0 } },
+  // { field: 'qrEnabled', label: '二维码启用', component: 'JSwitch', defaultValue: '1', componentProps: { options: ['1','0'], labelOptions: ['启用','禁用'] } },
+  // { field: 'allowOffline', label: '允许脱机', component: 'JSwitch', defaultValue: '0', componentProps: { options: ['1','0'], labelOptions: ['是','否'] } },
 ];

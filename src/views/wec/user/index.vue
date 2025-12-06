@@ -70,7 +70,24 @@
             style="width: 240px"
             @search="handleSearch"
           />
-          <a-button type="primary" preIcon="ant-design:plus-outlined" @click="handleAdd">新增人员</a-button>
+          <a-button 
+            type="primary" 
+            danger
+            preIcon="ant-design:delete-outlined" 
+            :disabled="selectedRowKeys.length === 0"
+            @click="handleBatchAction({ key: 'delete' })"
+          >
+            批量删除
+          </a-button>
+          <a-dropdown>
+            <template #overlay>
+              <a-menu>
+                <a-menu-item key="1" @click="handleAddFromSystem('1')">添加到白名单</a-menu-item>
+                <a-menu-item key="2" @click="handleAddFromSystem('2')">添加到黑名单</a-menu-item>
+              </a-menu>
+            </template>
+            <a-button type="primary" preIcon="ant-design:plus-outlined">从系统中选择 <DownOutlined /></a-button>
+          </a-dropdown>
           <a-dropdown>
             <template #overlay>
               <a-menu @click="handleMenuClick">
@@ -93,22 +110,31 @@
     </div>
   </div>
 
-  <BasicDrawer v-model:visible="drawerVisible" title="人员信息" width="600px" :showFooter="false">
-    <UserForm :record="currentRecord" @success="handleSaved" />
-  </BasicDrawer>
+  <UserForm @register="registerDrawer" @success="handleSaved" />
+
+  <!-- 系统用户选择弹窗 -->
+  <UserSelectModalBiz 
+    :key="userSelectModalKey"
+    :multi="true" 
+    @register="registerUserSelectModal" 
+    @selected="onUserSelected" 
+  />
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { BasicTable, useTable, TableAction } from '/@/components/Table';
-import { BasicDrawer } from '/@/components/Drawer';
+import { useDrawer } from '/@/components/Drawer';
 import { useMessage } from '/@/hooks/web/useMessage';
 import { DownOutlined } from '@ant-design/icons-vue';
 import { columns, searchFormSchema } from './user.data';
 import UserForm from './UserForm.vue';
-import { listUsers, deleteUser, importUsers, type WecUserModel } from './user.api';
+import { listUsers, deleteUser, deleteBatch, importUsers, getStatistics, addFromSystem, type WecUserModel } from './user.api';
+import UserSelectModalBiz from '/@/components/Form/src/jeecg/components/userSelect/UserSelectModalBiz.vue';
+import { useModal } from '/@/components/Modal';
 
 const { createMessage, createConfirm } = useMessage();
+const userSelectModalKey = ref(0); // Key to force re-render to clear selection
 
 // 状态
 const currentFilter = ref('all'); // all, 1(白), 2(黑)
@@ -117,24 +143,49 @@ const total = ref(0);
 const whiteCount = ref(0);
 const blackCount = ref(0);
 
-const [registerTable, { reload, setProps, getDataSource }] = useTable({
+const selectedRowKeys = ref<string[]>([]);
+const [registerTable, { reload, setProps, getDataSource, getSelectRowKeys, clearSelectedRowKeys }] = useTable({
   api: listUsers,
   rowKey: 'id',
   columns,
-  actionColumn: { width: 160, fixed: 'right', title: '操作' },
-  formConfig: { labelWidth: 120, schemas: searchFormSchema, showAdvancedButton: true }, // 保持原有搜索配置，但在界面上隐藏默认搜索栏，使用自定义搜索
-  useSearchForm: false, // 禁用默认搜索栏，使用自定义头部
+  actionColumn: { width: 160, fixed: 'right', title: '操作', slots: { customRender: 'action' } },
+  formConfig: { labelWidth: 120, schemas: searchFormSchema, showAdvancedButton: true },
+  useSearchForm: false, 
   showTableSetting: true,
   bordered: true,
   showIndexColumn: false,
+  rowSelection: { 
+    type: 'checkbox',
+    onChange: (keys: string[]) => {
+      selectedRowKeys.value = keys;
+    }
+  },
   onChange: () => {
-    // 列表变化时更新统计（简单模拟，实际应由接口返回）
     updateStats();
   }
 });
 
-const drawerVisible = ref(false);
-const currentRecord = ref<Record<string, any>>({});
+function handleBatchAction({ key }) {
+  if (key === 'delete') {
+    const ids = selectedRowKeys.value;
+    if (!ids || ids.length === 0) return;
+    createConfirm({
+      title: '确认删除',
+      content: `确定要删除选中的 ${ids.length} 条记录吗？`,
+      iconType: 'warning',
+      async onOk() {
+        await deleteBatch(ids.join(','));
+        createMessage.success('删除成功');
+        clearSelectedRowKeys();
+        selectedRowKeys.value = [];
+        reload();
+        updateStats();
+      },
+    });
+  }
+}
+
+const [registerDrawer, { openDrawer }] = useDrawer();
 
 const filterTitle = computed(() => {
   if (currentFilter.value === '1') return '白名单';
@@ -147,7 +198,7 @@ function handleFilterChange(key: string) {
   currentFilter.value = key;
   const searchInfo: any = {};
   if (key !== 'all') {
-    searchInfo.userType = key; // 假设 userType 1=白名单 2=黑名单，需根据实际字段调整
+    searchInfo.userType = key;
   }
   if (keyword.value) {
     searchInfo.realName = keyword.value;
@@ -160,24 +211,30 @@ function handleSearch() {
   handleFilterChange(currentFilter.value);
 }
 
-function updateStats() {
-  // 模拟统计数据更新，实际项目中建议单独调用统计接口
-  const data = getDataSource();
-  if (data) {
-    // 这里仅为示例，实际应从后端获取准确总数
-    // total.value = ...
-  }
-  // 临时模拟数据
-  if (total.value === 0) {
-    total.value = 128;
-    whiteCount.value = 120;
-    blackCount.value = 8;
+async function updateStats() {
+  try {
+    const res = await getStatistics();
+    if (res) {
+      total.value = res.total || 0;
+      whiteCount.value = res.white_count || 0;
+      blackCount.value = res.black_count || 0;
+    }
+  } catch (e) {
+    console.error('Failed to fetch statistics', e);
   }
 }
 
-function handleAdd() { currentRecord.value = {}; drawerVisible.value = true; }
-function handleEdit(record: WecUserModel) { currentRecord.value = { ...record }; drawerVisible.value = true; }
-function handleSaved() { drawerVisible.value = false; reload(); updateStats(); }
+function handleEdit(record: WecUserModel) {
+  openDrawer(true, {
+    record,
+    isUpdate: true,
+  });
+}
+
+function handleSaved() {
+  reload();
+  updateStats();
+}
 
 function handleDelete(record: WecUserModel) {
   createConfirm({
@@ -194,10 +251,46 @@ function handleDelete(record: WecUserModel) {
 
 async function handleMenuClick({ key }: any) {
   if (key === 'import') {
-    await importUsers({});
-    createMessage.success('已触发导入');
+    // Trigger file upload manually or use JImportModal
+    createMessage.info('请使用系统通用的导入功能或开发专用导入组件');
   } else if (key === 'export') {
     createMessage.success('正在导出...');
+    // Call export API
+  } else if (key === 'addFromSystem') {
+    openUserSelectModal(true);
+  }
+}
+
+// User Select Modal
+const [registerUserSelectModal, { openModal: openUserSelectModal, closeModal: closeUserSelectModal }] = useModal();
+const targetUserType = ref('1'); // 1=White, 2=Black
+
+function handleAddFromSystem(type: string) {
+  targetUserType.value = type;
+  userSelectModalKey.value += 1; // Force component re-creation to clear selection
+  // Need to wait for nextTick for re-render, but openModal might work if component is ready
+  // However, re-creating component might lose the register hook reference temporarily
+  // Better approach: Use a small timeout or nextTick before opening
+  setTimeout(() => {
+    openUserSelectModal(true, {});
+  }, 50);
+}
+
+async function onUserSelected(users: any[]) {
+  if (!users || users.length === 0) return;
+  const ids = users.map((u: any) => u.id);
+  try {
+    await addFromSystem({ userIds: ids, userType: targetUserType.value });
+    createMessage.success(`已添加 ${ids.length} 名人员到${targetUserType.value === '1' ? '白名单' : '黑名单'}`);
+    closeUserSelectModal();
+    
+    // Clear selection cache if the component supports it, or just rely on reload
+    // Ideally UserSelectModalBiz should handle clearing its own selection on close/re-open
+    
+    reload();
+    updateStats();
+  } catch (e) {
+    createMessage.error('添加失败');
   }
 }
 

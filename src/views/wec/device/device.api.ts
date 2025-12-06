@@ -10,6 +10,8 @@ enum Api {
   restart = '/wec/device/control/restart',
   factoryReset = '/wec/device/control/factoryReset',
   syncTime = '/wec/device/control/syncTime',
+  enableBlacklist = '/wec/device/control/enableBlacklist',
+  enableWhitelist = '/wec/device/control/enableWhitelist',
   searchPending = '/wec/device/searchPending',
 }
 
@@ -23,6 +25,8 @@ export const stopDevice = (sns: string[]) => defHttp.post({ url: Api.stop, param
 export const restartDevice = (sns: string[]) => defHttp.post({ url: Api.restart, params: { sns } });
 export const factoryResetDevice = (sns: string[]) => defHttp.post({ url: Api.factoryReset, params: { sns } });
 export const syncDeviceTime = (sns: string[]) => defHttp.post({ url: Api.syncTime, params: { sns } });
+export const enableBlacklist = (sns: string[]) => defHttp.post({ url: Api.enableBlacklist, params: { sns } });
+export const enableWhitelist = (sns: string[]) => defHttp.post({ url: Api.enableWhitelist, params: { sns } });
 
 export const searchPendingDevices = (keyword?: string) => defHttp.get({ url: Api.searchPending, params: { keyword } });
 
