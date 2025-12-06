@@ -2,6 +2,7 @@
   <BasicTable @register="registerTable">
     <template #toolbar>
       <a-button type="primary" preIcon="ant-design:search-outlined" @click="handleSearchPending">搜索待添加设备</a-button>
+      <a-button type="primary" style="margin-left:8px;" preIcon="ant-design:download-outlined" @click="handleDownloadTool">下载搜索工具</a-button>
       <a-dropdown trigger="['click']" placement="bottomLeft">
         <a-button type="primary" style="margin-left:8px;" preIcon="ant-design:setting-outlined" :loading="operating">
           远程控制
@@ -227,6 +228,16 @@ const [registerSearchTable, { setTableData, setLoading }] = useTable({
   maxHeight: 400,
   actionColumn: { width: 100, title: '操作', slots: { customRender: 'action' } },
 });
+
+function handleDownloadTool() {
+  const link = document.createElement('a');
+  link.style.display = 'none';
+  link.href = '/resource/tools/NetModuleConfig_7_20.exe';
+  link.setAttribute('download', 'NetModuleConfig_7_20.exe');
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
 
 function handleSearchPending() {
   searchKeyword.value = '';
