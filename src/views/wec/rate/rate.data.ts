@@ -134,7 +134,7 @@ export const formSchema: FormSchema[] = [
   },
   // 计次字段
   {
-    field: 'perCountAmount',
+    field: 'perTimeMoney',
     label: '单次金额(元)',
     component: 'InputNumber',
     required: true,
