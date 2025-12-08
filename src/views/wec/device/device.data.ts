@@ -1,11 +1,11 @@
 import type { BasicColumn, FormSchema } from '/@/components/Table';
 import { listRateTemplates } from '/@/views/wec/rate/rate.api';
-import { listLocations } from '/@/views/wec/location/location.api';
 
 export const columns: BasicColumn[] = [
   { title: '设备名称', dataIndex: 'deviceName', width: 160 },
   { title: '在线', dataIndex: 'onlineStatus', width: 80, slots: { customRender: 'onlineStatus' } },
   { title: '机号（系列号）', dataIndex: 'sn', width: 140 },
+  { title: '设备IP', dataIndex: 'ipAddress', width: 120 },
   { title: '费率模板', dataIndex: 'rateTemplateId_dictText', width: 160 },
   { title: '状态', dataIndex: 'status', width: 100, customRender: ({ text }) => {
     return text === '1' ? '启用' : '停用';

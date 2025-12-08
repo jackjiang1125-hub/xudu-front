@@ -16,6 +16,7 @@
             <a-menu-item key="syncTime">同步时间</a-menu-item>
             <a-menu-item key="enableBlacklist">启用黑名单</a-menu-item>
             <a-menu-item key="enableWhitelist">启用白名单</a-menu-item>
+            <a-menu-item key="getNamelistMode">获取当前名单模式</a-menu-item>
           </a-menu>
         </template>
       </a-dropdown>
@@ -90,7 +91,7 @@ import { BasicModal, useModal } from '/@/components/Modal';
 import { useMessage } from '/@/hooks/web/useMessage';
 import { columns, searchFormSchema } from './device.data';
 import DeviceForm from './DeviceForm.vue';
-import { listWecDevices, deleteWecDevice, startDevice, stopDevice, restartDevice, factoryResetDevice, syncDeviceTime, enableBlacklist, enableWhitelist, searchPendingDevices, addWecDevice, editWecDevice, type WecDeviceModel } from './device.api';
+import { listWecDevices, deleteWecDevice, startDevice, stopDevice, restartDevice, factoryResetDevice, syncDeviceTime, enableBlacklist, enableWhitelist, getNamelistMode, searchPendingDevices, addWecDevice, editWecDevice, type WecDeviceModel } from './device.api';
 import { BasicColumn } from '/@/components/Table';
 import { Icon } from '/@/components/Icon';
 import dayjs from 'dayjs';
@@ -194,6 +195,12 @@ async function onOperationSelect({ key }: any) {
     if (key === 'syncTime') await syncDeviceTime(sns);
     if (key === 'enableBlacklist') await enableBlacklist(sns);
     if (key === 'enableWhitelist') await enableWhitelist(sns);
+    if (key === 'getNamelistMode') {
+      await getNamelistMode(sns);
+      createMessage.success('查询指令已下发，请等待5秒后手动刷新页面查看结果');
+      operating.value = false;
+      return;
+    }
     if (key === 'factoryReset') {
       operating.value = false; // 提前结束loading，因为是弹窗操作
       createConfirm({

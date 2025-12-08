@@ -12,6 +12,7 @@ enum Api {
   syncTime = '/wec/device/control/syncTime',
   enableBlacklist = '/wec/device/control/enableBlacklist',
   enableWhitelist = '/wec/device/control/enableWhitelist',
+  getNamelistMode = '/wec/device/control/getNamelistMode',
   searchPending = '/wec/device/searchPending',
 }
 
@@ -27,6 +28,7 @@ export const factoryResetDevice = (sns: string[]) => defHttp.post({ url: Api.fac
 export const syncDeviceTime = (sns: string[]) => defHttp.post({ url: Api.syncTime, params: { sns } });
 export const enableBlacklist = (sns: string[]) => defHttp.post({ url: Api.enableBlacklist, params: { sns } });
 export const enableWhitelist = (sns: string[]) => defHttp.post({ url: Api.enableWhitelist, params: { sns } });
+export const getNamelistMode = (sns: string[]) => defHttp.post({ url: Api.getNamelistMode, params: { sns } });
 
 export const searchPendingDevices = (keyword?: string) => defHttp.get({ url: Api.searchPending, params: { keyword } });
 
