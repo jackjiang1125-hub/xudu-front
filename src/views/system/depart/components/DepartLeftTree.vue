@@ -97,6 +97,7 @@
   import DepartFormModal from '/@/views/system/depart/components/DepartFormModal.vue';
   import { Popconfirm } from 'ant-design-vue';
 
+  
   const prefixCls = inject('prefixCls');
   const emit = defineEmits(['select', 'rootTreeData']);
   const { createMessage } = useMessage();
@@ -140,7 +141,6 @@
         if (selectedKeys.value.length === 0) {
           let item = treeData.value[0];
           if (item) {
-            // 默认选中第一个
             setSelectedKey(item.id, item);
           }
         } else {
@@ -193,7 +193,6 @@
       if (!item.isLeaf) {
         expandedKeys.value = [item.key];
       }
-      // 默认选中第一个
       setSelectedKey(item.id, item);
       reloadTree();
     } else {
@@ -270,7 +269,6 @@
     if (selKeys.length > 0 && selectedKeys.value[0] !== selKeys[0]) {
       setSelectedKey(selKeys[0], event.selectedNodes[0]);
     } else {
-      // 这样可以防止用户取消选择
       setSelectedKey(selectedKeys.value[0]);
     }
   }
